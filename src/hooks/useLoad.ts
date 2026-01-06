@@ -1,22 +1,22 @@
 import { queryKeys } from '../lib/react-query';
-import { useGet, usePost, usePut, usePatch, useDelete } from './useApi';
+import { useGet, usePatch } from './useApi';
 
 export const useLoads = (filters = {}): any => {
-  return useGet(queryKeys.loads.list(filters), '/loads', {
+  return useGet(queryKeys.loads.list(filters) as unknown as any[], '/loads', {
     enabled: true,
     queryParams: filters,
   });
 };
 
 export const useLoad = (id: any) => {
-  return useGet(queryKeys.loads.detail(id), `/loads/${id}`, {
+  return useGet(queryKeys.loads.detail(id) as unknown as any[], `/loads/${id}`, {
     enabled: !!id,
   });
 };
 
 export const useDriverAssignedLoads = (filters = {}): any => {
   return useGet(
-    queryKeys.driverLoads.list(filters),
+    queryKeys.driverLoads.list(filters) as unknown as any[],
     '/driver/loads/assigned',
     { enabled: true, queryParams: filters }
   );
@@ -24,7 +24,7 @@ export const useDriverAssignedLoads = (filters = {}): any => {
 
 export const useDriverLoadDecision = (loadId: string | number, options = {}) => {
   return usePatch(
-    queryKeys.driverLoads.detail(loadId),
+    queryKeys.driverLoads.detail(loadId) as unknown as any[],
     `/driver/loads/${loadId}/decision`,
     {
       successMessage: 'Decision submitted successfully',
@@ -35,7 +35,7 @@ export const useDriverLoadDecision = (loadId: string | number, options = {}) => 
 
 export const useDriverActiveLoads = (filters = {}): any => {
   return useGet(
-    queryKeys.driverLoads.active(),
+    queryKeys.driverLoads.active() as unknown as any[],
     '/driver/loads/active',
     {
       enabled: true,
@@ -49,7 +49,7 @@ export const useDriverLoadLocationStatus = (
   options = {}
 ): Record<string, any> => {
   return usePatch(
-    queryKeys.driverLoads.locationStatus(loadId),
+    queryKeys.driverLoads.locationStatus(loadId) as unknown as any[],
     `/driver/loads/${loadId}/events/status`,
     {
       successMessage: 'Events status updated successfully',
@@ -63,7 +63,7 @@ export const useUpdateDriverLoadReturnInfo = (
   options = {}
 ): Record<string, any> => {
   return usePatch(
-    queryKeys.driverLoads.returnInfo(loadId),
+    queryKeys.driverLoads.returnInfo(loadId) as unknown as any[],
     `/driver/loads/${loadId}/complete`,
     {
       successMessage: 'Return info updated successfully',
@@ -74,7 +74,7 @@ export const useUpdateDriverLoadReturnInfo = (
 
 export const useLoadRouting = (id: string | number) => {
   return useGet(
-    [...queryKeys.loads.detail(id), 'routing'],
+    [...queryKeys.loads.detail(id), 'routing'] as unknown as any[],
     `/loads/${id}/routing`,
     {
       enabled: !!id,
@@ -84,7 +84,7 @@ export const useLoadRouting = (id: string | number) => {
 
 export const useDriverStartLoadRoutingMove = (id: string | number, options = {}): Record<string, any> => {
   return usePatch(
-    [...queryKeys.driverLoads.detail(id), 'routing'],
+    [...queryKeys.driverLoads.detail(id), 'routing'] as unknown as any[],
     `/driver/loads/${id}/start`,
     {
       successMessage: 'Load routing move started successfully',

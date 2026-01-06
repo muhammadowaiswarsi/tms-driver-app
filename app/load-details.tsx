@@ -111,14 +111,15 @@ const LoadDetails: React.FC = () => {
             title="Reject"
             onPress={() => setRejectDialog(true)}
             buttonStyle={[styles.actionButton, styles.rejectButton]}
-            titleStyle={styles.actionButtonTitle}
+            titleStyle={styles.rejectButtonTitle}
           />
           <Button
             title={isAccepting ? 'Accepting...' : 'Accept Load'}
             onPress={handleAcceptLoad}
             disabled={isAccepting}
             buttonStyle={[styles.actionButton, styles.acceptButton]}
-            titleStyle={styles.actionButtonTitle}
+            titleStyle={styles.acceptButtonTitle}
+            loading={isAccepting}
           />
         </View>
       </ScrollView>
@@ -126,7 +127,7 @@ const LoadDetails: React.FC = () => {
       {/* Accept Confirmation Dialog */}
       {confirmDialog && (
         <View style={styles.dialogOverlay}>
-          <TypedCard containerStyle={styles.dialogCard}>
+          <View style={styles.dialogCard}>
             <Icon
               name="warning"
               type="material"
@@ -158,14 +159,14 @@ const LoadDetails: React.FC = () => {
                 titleStyle={[styles.dialogButtonText, { color: driverTheme.colors.grey[600] }]}
               />
             </View>
-          </TypedCard>
+          </View>
         </View>
       )}
 
       {/* Reject Confirmation Dialog */}
       {rejectDialog && (
         <View style={styles.dialogOverlay}>
-          <TypedCard containerStyle={styles.dialogCard}>
+          <View style={styles.dialogCard}>
             <Icon
               name="warning"
               type="material"
@@ -190,7 +191,7 @@ const LoadDetails: React.FC = () => {
                 titleStyle={[styles.dialogButtonText, { color: driverTheme.colors.grey[600] }]}
               />
             </View>
-          </TypedCard>
+          </View>
         </View>
       )}
     </DriverLayout>
@@ -253,25 +254,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: driverTheme.spacing.md,
     padding: driverTheme.spacing.md,
-    backgroundColor: driverTheme.colors.background.paper,
-    marginTop: driverTheme.spacing.md,
-    borderRadius: 8,
+    paddingBottom: driverTheme.spacing.lg,
   },
   actionButton: {
-    flex: 1,
     borderRadius: 8,
+    paddingVertical: driverTheme.spacing.md,
+    minHeight: 50,
   },
   rejectButton: {
-    backgroundColor: driverTheme.colors.grey[500],
-    width: '30%',
+    backgroundColor: driverTheme.colors.background.paper,
+    borderWidth: 1,
+    borderColor: driverTheme.colors.grey[400],
+    width: 80,
+    flex: 0,
   },
   acceptButton: {
     backgroundColor: driverTheme.colors.success.main,
     flex: 1,
   },
-  actionButtonTitle: {
-    fontSize: 12,
+  rejectButtonTitle: {
+    fontSize: 14,
     fontWeight: '600',
+    color: driverTheme.colors.text.secondary,
+  },
+  acceptButtonTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: driverTheme.colors.background.paper,
   },
   dialogOverlay: {
     position: 'absolute',
@@ -288,6 +297,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     width: '90%',
     maxWidth: 400,
+    backgroundColor: driverTheme.colors.background.paper,
+    padding: driverTheme.spacing.lg,
     alignItems: 'center',
   },
   dialogIcon: {
@@ -298,13 +309,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     marginBottom: driverTheme.spacing.lg,
+    color: driverTheme.colors.text.primary,
   },
   dialogButtons: {
     width: '100%',
     gap: driverTheme.spacing.sm,
+    alignItems: 'stretch',
   },
   dialogButton: {
     borderRadius: 8,
+    width: '100%',
+    minHeight: 50,
+    paddingVertical: driverTheme.spacing.md,
   },
   dialogButtonOutlined: {
     backgroundColor: 'transparent',

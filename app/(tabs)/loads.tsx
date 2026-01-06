@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Card, Button, Icon, Input } from 'react-native-elements';
-import { useRouter } from 'expo-router';
+import { Button, Card, Icon, Input } from 'react-native-elements';
 import DriverLayout from '../../src/components/common/DriverLayout';
 import {
   useDriverActiveLoads,
@@ -26,7 +26,11 @@ const TypedCard = Card as any;
 
 const LoadSearch: React.FC = () => {
   const router = useRouter();
-  const [currentTab, setCurrentTab] = useState(0);
+  const params = useLocalSearchParams();
+  const [currentTab, setCurrentTab] = useState(() => {
+    // Set initial tab based on query parameter, default to 0 (Active)
+    return params.tab === 'upcoming' ? 1 : 0;
+  });
   const [confirmDialog, setConfirmDialog] = useState(false);
   const [documentDialog, setDocumentDialog] = useState(false);
   const [completeDialog, setCompleteDialog] = useState(false);
@@ -44,6 +48,7 @@ const LoadSearch: React.FC = () => {
     isLoading: isLoadingUpcoming,
     refetch: refetchUpcoming,
   } = useDriverAssignedLoads();
+  console.log("driverUpcomingLoads",driverUpcomingLoads);
 
   const {
     data: driverActiveLoads,
@@ -224,6 +229,15 @@ const LoadSearch: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Update tab when params change
+  useEffect(() => {
+    if (params.tab === 'upcoming') {
+      setCurrentTab(1);
+    } else {
+      setCurrentTab(0);
+    }
+  }, [params.tab]);
+
   const handleTabChange = (newValue: number) => {
     setCurrentTab(newValue);
     if (newValue === 1) {
@@ -293,7 +307,7 @@ const LoadSearch: React.FC = () => {
   const renderActiveTab = () => {
     if (!driverActiveLoads?.data) {
       return (
-        <View style={styles.emptyContainer}>
+        <View style={styles.emptyContainerActive}>
           <Icon name="help" type="material" size={48} color={driverTheme.colors.text.secondary} />
           <Text style={styles.emptyTitle}>No Active Load</Text>
           <Text style={styles.emptySubtitle}>Check upcoming loads to get started</Text>
@@ -459,7 +473,14 @@ const LoadSearch: React.FC = () => {
   };
 
   const renderUpcomingTab = () => (
-    <ScrollView style={styles.scrollView} contentContainerStyle={styles.upcomingContent}>
+    <ScrollView 
+      style={styles.scrollView} 
+      contentContainerStyle={
+        !driverUpcomingLoads?.data || driverUpcomingLoads?.data.length === 0 
+          ? styles.upcomingContentEmpty 
+          : styles.upcomingContent
+      }
+    >
       {!driverUpcomingLoads?.data || driverUpcomingLoads?.data.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Icon name="local-shipping" type="material" size={80} color={driverTheme.colors.grey[400]} />
@@ -808,6 +829,13 @@ const styles = StyleSheet.create({
     padding: driverTheme.spacing.md,
     paddingBottom: 100,
   },
+  upcomingContentEmpty: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: driverTheme.spacing.xl,
+    minHeight: '100%',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -914,11 +942,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   emptyContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: driverTheme.spacing.xl,
+    width: '100%',
+  },
+  emptyContainerActive: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: driverTheme.spacing.xl,
-    minHeight: 300,
   },
   emptyTitle: {
     fontSize: 18,

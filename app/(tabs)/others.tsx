@@ -1,15 +1,15 @@
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Switch,
   Alert,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Card, Avatar, Icon, Button } from 'react-native-elements';
-import { useRouter } from 'expo-router';
+import { Avatar, Button, Card, Icon } from 'react-native-elements';
 import DriverLayout from '../../src/components/common/DriverLayout';
 import { useAuth } from '../../src/hooks/useAuth';
 import AuthService from '../../src/services/AuthService';
@@ -56,7 +56,7 @@ const Others: React.FC = () => {
       title: 'Profile',
       icon: 'person',
       type: 'navigation',
-      action: () => router.push('/driver/profile' as any),
+      action: () => router.push('/(tabs)/loads?tab=active' as any),
     },
     {
       id: 'notifications',
@@ -82,7 +82,7 @@ const Others: React.FC = () => {
       title: 'Security & Privacy',
       icon: 'security',
       type: 'navigation',
-      action: () => router.push('/driver/security' as any),
+      action: () => router.push('/(tabs)/loads?tab=active' as any),
     },
     {
       id: 'language',
@@ -90,21 +90,21 @@ const Others: React.FC = () => {
       icon: 'language',
       subtitle: 'English',
       type: 'navigation',
-      action: () => router.push('/driver/language' as any),
+      action: () => router.push('/(tabs)/loads?tab=active' as any),
     },
     {
       id: 'help',
       title: 'Help & Support',
       icon: 'help',
       type: 'navigation',
-      action: () => router.push('/driver/help' as any),
+      action: () => router.push('/(tabs)/loads?tab=active' as any),
     },
     {
       id: 'about',
       title: 'About',
       icon: 'info',
       type: 'navigation',
-      action: () => router.push('/driver/about' as any),
+      action: () => router.push('/(tabs)/loads?tab=active' as any),
     },
   ];
 

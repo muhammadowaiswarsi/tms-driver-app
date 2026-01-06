@@ -21,7 +21,7 @@ export default function TabLayout() {
           href: null, // Hide from tab bar
         }}
       />
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="clock-in"
         options={{
           href: null, // Hide from tab bar
@@ -32,7 +32,7 @@ export default function TabLayout() {
         options={{
           href: null, // Hide from tab bar
         }}
-      />
+      /> */}
       <Tabs.Screen
         name="messages"
         options={{
