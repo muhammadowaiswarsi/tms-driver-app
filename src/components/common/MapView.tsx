@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import LeafletView from 'react-native-leaflet-view';
 
 interface MapViewProps {
   routeCoordinates?: Array<{ latitude: number; longitude: number }>;
@@ -17,87 +17,86 @@ const CustomMapView: React.FC<MapViewProps> = ({
   height = 300,
   showRoute = true,
 }) => {
-  // Calculate initial region
-  const getInitialRegion = () => {
+  // Calculate center point
+  const getCenter = () => {
     if (currentLocation) {
-      return {
-        latitude: currentLocation.latitude,
-        longitude: currentLocation.longitude,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
-      };
+      return [currentLocation.latitude, currentLocation.longitude];
     }
 
     if (routeCoordinates.length > 0) {
       const lats = routeCoordinates.map((coord) => coord.latitude);
       const lngs = routeCoordinates.map((coord) => coord.longitude);
-      const minLat = Math.min(...lats);
-      const maxLat = Math.max(...lats);
-      const minLng = Math.min(...lngs);
-      const maxLng = Math.max(...lngs);
-
-      return {
-        latitude: (minLat + maxLat) / 2,
-        longitude: (minLng + maxLng) / 2,
-        latitudeDelta: Math.max(maxLat - minLat, 0.01) * 1.5,
-        longitudeDelta: Math.max(maxLng - minLng, 0.01) * 1.5,
-      };
+      const avgLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+      const avgLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+      return [avgLat, avgLng];
     }
 
-    // Default to a central location (you can change this)
-    return {
-      latitude: 40.7128,
-      longitude: -74.0060,
-      latitudeDelta: 0.0922,
-      longitudeDelta: 0.0421,
-    };
+    // Default location
+    return [40.7128, -74.0060];
   };
+
+  // Convert markers to Leaflet format
+  const leafletMarkers = useMemo(() => {
+    const markerList: any[] = [];
+
+    // Add current location marker
+    if (currentLocation) {
+      markerList.push({
+        id: 'current-location',
+        position: [currentLocation.latitude, currentLocation.longitude],
+        icon: '📍',
+        size: [32, 32],
+      });
+    }
+
+    // Add custom markers
+    markers.forEach((marker, index) => {
+      markerList.push({
+        id: `marker-${index}`,
+        position: [marker.latitude, marker.longitude],
+        icon: '📍',
+        size: [32, 32],
+        title: marker.title || `Marker ${index + 1}`,
+      });
+    });
+
+    return markerList;
+  }, [currentLocation, markers]);
+
+  // Convert route coordinates to polyline
+  const polylines = useMemo(() => {
+    if (!showRoute || routeCoordinates.length < 2) {
+      return [];
+    }
+
+    return [
+      {
+        positions: routeCoordinates.map((coord) => [coord.latitude, coord.longitude]),
+        color: '#4285F4',
+        weight: 4,
+      },
+    ];
+  }, [routeCoordinates, showRoute]);
 
   return (
     <View style={[styles.container, { height }]}>
-      <MapView
-        style={styles.map}
-        provider={PROVIDER_GOOGLE}
-        initialRegion={getInitialRegion()}
-        showsUserLocation={!!currentLocation}
-        showsMyLocationButton={false}
-        toolbarEnabled={false}
-        mapType="standard">
-        {/* Current Location Marker */}
-        {currentLocation && (
-          <Marker
-            coordinate={{
-              latitude: currentLocation.latitude,
-              longitude: currentLocation.longitude,
-            }}
-            title="Current Location"
-            pinColor="#4285F4"
-          />
-        )}
-
-        {/* Route Polyline */}
-        {showRoute && routeCoordinates.length > 1 && (
-          <Polyline
-            coordinates={routeCoordinates}
-            strokeColor="#4285F4"
-            strokeWidth={4}
-            lineDashPattern={[]}
-          />
-        )}
-
-        {/* Custom Markers */}
-        {markers.map((marker, index) => (
-          <Marker
-            key={index}
-            coordinate={{
-              latitude: marker.latitude,
-              longitude: marker.longitude,
-            }}
-            title={marker.title || `Marker ${index + 1}`}
-            pinColor="#f44336"
-          />
-        ))}
-      </MapView>
+      <LeafletView
+        mapCenterPosition={getCenter()}
+        mapMarkers={leafletMarkers}
+        mapLines={polylines}
+        zoom={13}
+        mapLayers={[
+          {
+            baseLayer: true,
+            baseLayerName: 'OpenStreetMap',
+            url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            attribution: '© OpenStreetMap contributors',
+          },
+        ]}
+        onMessage={(message) => {
+          // Handle map events if needed
+        }}
+      />
     </View>
   );
 };
@@ -108,11 +107,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
   },
-  map: {
-    width: '100%',
-    height: '100%',
-  },
 });
 
 export default CustomMapView;
-
