@@ -12,7 +12,6 @@ import {
 import { Avatar, Button, Card, Icon } from 'react-native-elements';
 import DriverLayout from '../../src/components/common/DriverLayout';
 import { useAuth } from '../../src/hooks/useAuth';
-import AuthService from '../../src/services/AuthService';
 import { driverTheme } from '../../src/theme/driverTheme';
 
 // Type assertion helper for Card component (React Native Elements types don't include children)
@@ -36,13 +35,13 @@ const Others: React.FC = () => {
 
   const handleLogoutConfirm = async () => {
     try {
-      await AuthService.logout();
+      setLogoutDialogOpen(false);
+      // Call logout which will update auth state
+      // ProtectedRoute will automatically redirect to /auth/login
       await logoutAuth();
-      // Clear AsyncStorage if needed
-      router.replace('/auth/login');
-    } catch (error) {
-      console.error('Logout error:', error);
+    } catch {
       Alert.alert('Error', 'Failed to logout');
+      setLogoutDialogOpen(false);
     }
   };
 
@@ -150,7 +149,7 @@ const Others: React.FC = () => {
   );
 
   return (
-    <DriverLayout title="Others" showBackButton onBackClick={handleBackClick}>
+    <DriverLayout title="Others" showBackButton onBackClick={handleBackClick} currentTab="others">
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Profile Section */}
         <TypedCard containerStyle={styles.profileCard}>
@@ -193,7 +192,7 @@ const Others: React.FC = () => {
             onPress={handleLogoutClick}
             activeOpacity={0.7}
           >
-            <Icon name="exit-to-app" type="material" color={driverTheme.colors.error.main} size={24} />
+            <Icon name="exit-to-app" type="material" color={driverTheme.colors.primary.main} size={24} />
             <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
         </TypedCard>
@@ -212,13 +211,13 @@ const Others: React.FC = () => {
                 title="Cancel"
                 onPress={handleLogoutCancel}
                 buttonStyle={[styles.dialogButton, { backgroundColor: driverTheme.colors.grey[200] }]}
-                titleStyle={[styles.dialogButtonText, { color: driverTheme.colors.grey[600] }]}
+                titleStyle={[styles.buttonTitle, { color: driverTheme.colors.grey[600] }]}
               />
               <Button
                 title="Logout"
                 onPress={handleLogoutConfirm}
-                buttonStyle={[styles.dialogButton, { backgroundColor: driverTheme.colors.error.main }]}
-                titleStyle={styles.dialogButtonText}
+                buttonStyle={[styles.dialogButton, { backgroundColor: driverTheme.colors.primary.main }]}
+                titleStyle={styles.buttonTitle}
               />
             </View>
           </TypedCard>
@@ -268,7 +267,7 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: 'bold',
     color: driverTheme.colors.text.secondary,
     paddingHorizontal: driverTheme.spacing.md,
@@ -314,7 +313,7 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: driverTheme.typography.body1.fontSize,
-    color: driverTheme.colors.error.main,
+    color: driverTheme.colors.primary.main,
     fontWeight: '500',
     marginLeft: driverTheme.spacing.md,
   },
@@ -335,25 +334,25 @@ const styles = StyleSheet.create({
     maxWidth: 400,
   },
   dialogTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
+    textAlign: 'center',
     marginBottom: driverTheme.spacing.md,
   },
   dialogMessage: {
-    fontSize: 14,
+    fontSize: 16,
     color: driverTheme.colors.text.secondary,
+    textAlign: 'center',
     marginBottom: driverTheme.spacing.lg,
   },
   dialogButtons: {
-    flexDirection: 'row',
     gap: driverTheme.spacing.sm,
   },
   dialogButton: {
-    flex: 1,
     borderRadius: 8,
   },
-  dialogButtonText: {
-    fontSize: 14,
+  buttonTitle: {
+    fontSize: 16,
     fontWeight: '600',
   },
 });

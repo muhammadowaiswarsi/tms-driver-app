@@ -48,7 +48,6 @@ const LoadSearch: React.FC = () => {
     isLoading: isLoadingUpcoming,
     refetch: refetchUpcoming,
   } = useDriverAssignedLoads();
-  console.log("driverUpcomingLoads",driverUpcomingLoads);
 
   const {
     data: driverActiveLoads,
@@ -82,7 +81,6 @@ const LoadSearch: React.FC = () => {
       },
       onError: (error: any) => {
         Alert.alert('Error', 'Error starting load routing move');
-        console.error(error);
       },
     }
   );
@@ -97,7 +95,6 @@ const LoadSearch: React.FC = () => {
     onError: (error: any) => {
       setIsUpdating(false);
       Alert.alert('Error', 'Error updating status');
-      console.error(error);
     },
   });
 
@@ -115,7 +112,6 @@ const LoadSearch: React.FC = () => {
     onError: (error: any) => {
       setIsCompleting(false);
       Alert.alert('Error', 'Error completing load');
-      console.error(error);
     },
   });
 
@@ -183,8 +179,8 @@ const LoadSearch: React.FC = () => {
           status,
         },
       });
-    } catch (error) {
-      console.error('Error updating event status:', error);
+    } catch {
+      // Error handled by onError callback
     }
   };
 
@@ -299,8 +295,8 @@ const LoadSearch: React.FC = () => {
       await updateLoadStatus.mutateAsync({
         data: payload,
       });
-    } catch (error) {
-      console.error('Error completing load:', error);
+    } catch {
+      // Error handled by onError callback
     }
   };
 
@@ -812,7 +808,7 @@ const styles = StyleSheet.create({
     backgroundColor: driverTheme.colors.background.paper,
   },
   tabText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '600',
     color: driverTheme.colors.background.paper,
   },
@@ -871,23 +867,23 @@ const styles = StyleSheet.create({
     marginBottom: driverTheme.spacing.sm,
   },
   loadNumber: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '500',
     color: driverTheme.colors.text.primary,
   },
   chip: {
     backgroundColor: '#377cf6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
   chipText: {
     color: '#fff',
-    fontSize: 8,
+    fontSize: 12,
     fontWeight: '600',
   },
   loadDetail: {
-    fontSize: 12,
+    fontSize: 14,
     color: driverTheme.colors.text.primary,
     marginBottom: driverTheme.spacing.xs,
   },
@@ -906,22 +902,22 @@ const styles = StyleSheet.create({
     marginBottom: driverTheme.spacing.xs,
   },
   eventChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
   eventChipText: {
     color: '#fff',
-    fontSize: 8,
+    fontSize: 12,
     fontWeight: '600',
   },
   eventTime: {
-    fontSize: 10,
+    fontSize: 12,
     color: driverTheme.colors.grey[600],
     textAlign: 'right',
   },
   eventLocation: {
-    fontSize: 10,
+    fontSize: 12,
     color: driverTheme.colors.grey[600],
     marginBottom: driverTheme.spacing.sm,
   },
@@ -938,7 +934,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eventButtonTitle: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
   },
   emptyContainer: {
@@ -954,14 +950,14 @@ const styles = StyleSheet.create({
     padding: driverTheme.spacing.xl,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: driverTheme.colors.text.secondary,
     marginTop: driverTheme.spacing.md,
     marginBottom: driverTheme.spacing.sm,
   },
   emptySubtitle: {
-    fontSize: 14,
+    fontSize: 16,
     color: driverTheme.colors.text.disabled,
     textAlign: 'center',
     maxWidth: 300,
@@ -977,17 +973,17 @@ const styles = StyleSheet.create({
     marginBottom: driverTheme.spacing.md,
   },
   upcomingLoadNumber: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: driverTheme.colors.primary.main,
   },
   upcomingChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 12,
   },
   upcomingChipText: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '600',
   },
   upcomingDetails: {
@@ -1000,12 +996,12 @@ const styles = StyleSheet.create({
     marginBottom: driverTheme.spacing.sm,
   },
   upcomingDetailLabel: {
-    fontSize: 12,
+    fontSize: 14,
     color: driverTheme.colors.text.secondary,
     marginBottom: 4,
   },
   upcomingDetailValue: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: driverTheme.colors.text.primary,
   },
@@ -1013,7 +1009,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   buttonTitle: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '600',
   },
   dialogOverlay: {
@@ -1039,7 +1035,7 @@ const styles = StyleSheet.create({
     marginBottom: driverTheme.spacing.md,
   },
   dialogMessage: {
-    fontSize: 14,
+    fontSize: 16,
     color: driverTheme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: driverTheme.spacing.lg,
@@ -1117,13 +1113,13 @@ const styles = StyleSheet.create({
     color: driverTheme.colors.text.primary,
   },
   requiredChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
   requiredChipText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
   },
   uploadButton: {
@@ -1131,7 +1127,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   uploadButtonTitle: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '600',
   },
   uploadedText: {

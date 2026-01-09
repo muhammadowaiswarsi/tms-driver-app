@@ -9,10 +9,6 @@ import { confirmSignIn, fetchAuthSession, getCurrentUser, signIn, signOut } from
 const Auth = {
   signIn: async (username: string, password: string) => {
     try {
-      // Log configuration check
-      console.log('Attempting signIn with username:', username);
-      console.log('Amplify config:', Amplify.getConfig());
-      
       // Expo Go note:
       // Default `signIn` uses SRP which hits native `computeModPow` on React Native.
       // Use USER_PASSWORD_AUTH to keep the flow JS-only (works in Expo Go) as long as
@@ -37,12 +33,6 @@ const Auth = {
         return { username, challengeName, isSignedIn: false };
       }
     } catch (error: any) {
-      // Log full error for debugging
-      console.error('AWS Amplify signIn error - Full error object:', error);
-      console.error('Error type:', typeof error);
-      console.error('Error constructor:', error?.constructor?.name);
-      console.error('Error keys:', error ? Object.keys(error) : 'no error object');
-      
       // Extract error message from AWS Amplify v6 error structure
       let errorMessage = 'Sign in failed';
       
@@ -74,7 +64,6 @@ const Auth = {
         }
       }
       
-      console.error('Extracted error message:', errorMessage);
       throw new Error(errorMessage);
     }
   },
@@ -185,14 +174,6 @@ const AuthService = {
 
       return { user, tokens };
     } catch (err: any) {
-      console.error('Login error details:', {
-        message: err?.message,
-        name: err?.name,
-        code: err?.code,
-        toString: err?.toString(),
-        fullError: err,
-      });
-      
       // Extract detailed error message
       let errorMessage = 'An unknown error has occurred';
       
@@ -246,7 +227,6 @@ const AuthService = {
 
       return { success: true };
     } catch (error: any) {
-      console.error('Logout error:', error);
       return { success: false, error: error.message };
     }
   },
@@ -295,7 +275,6 @@ const AuthService = {
 
       return tokens;
     } catch (error) {
-      console.error('Token refresh error:', error);
       // If refresh fails, logout the user
       await AuthService.logout();
       throw error;

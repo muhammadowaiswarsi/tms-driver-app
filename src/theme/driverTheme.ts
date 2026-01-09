@@ -56,45 +56,45 @@ export const driverTheme = {
   typography: {
     fontFamily: 'System',
     h1: {
-      fontSize: 32,
+      fontSize: 36,
       fontWeight: '600' as const,
       lineHeight: 1.2,
     },
     h2: {
-      fontSize: 28,
+      fontSize: 32,
       fontWeight: '600' as const,
       lineHeight: 1.3,
     },
     h3: {
-      fontSize: 24,
+      fontSize: 28,
       fontWeight: '600' as const,
       lineHeight: 1.4,
     },
     h4: {
-      fontSize: 20,
+      fontSize: 24,
       fontWeight: '600' as const,
       lineHeight: 1.4,
     },
     h5: {
-      fontSize: 18,
+      fontSize: 20,
       fontWeight: '600' as const,
       lineHeight: 1.4,
     },
     h6: {
-      fontSize: 16,
+      fontSize: 18,
       fontWeight: '600' as const,
       lineHeight: 1.4,
     },
     body1: {
-      fontSize: 14,
+      fontSize: 16,
       lineHeight: 1.5,
     },
     body2: {
-      fontSize: 12,
+      fontSize: 14,
       lineHeight: 1.4,
     },
     button: {
-      fontSize: 14,
+      fontSize: 16,
       fontWeight: '600' as const,
       textTransform: 'none' as const,
     },

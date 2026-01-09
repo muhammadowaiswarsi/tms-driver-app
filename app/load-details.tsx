@@ -1,13 +1,13 @@
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
   Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
-import { Card, Button, Icon } from 'react-native-elements';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Button, Card, Icon } from 'react-native-elements';
 import DriverLayout from '../src/components/common/DriverLayout';
 import { useDriverLoadDecision, useLoadRouting } from '../src/hooks/useLoad';
 import { driverTheme } from '../src/theme/driverTheme';
@@ -39,7 +39,6 @@ const LoadDetails: React.FC = () => {
       router.push('/(tabs)/loads');
     },
     onError: () => {
-      console.error('Error updating load decision');
       Alert.alert('Error', 'Failed to update load decision');
     },
   });
@@ -51,7 +50,6 @@ const LoadDetails: React.FC = () => {
         data: { status: 'ACCEPTED' },
       });
     } catch (error) {
-      console.error(error);
       setIsAccepting(false);
       setConfirmDialog(false);
     }
@@ -64,7 +62,6 @@ const LoadDetails: React.FC = () => {
         data: { status: 'REJECTED' },
       });
     } catch (error) {
-      console.error(error);
       setIsRejecting(false);
       setRejectDialog(false);
     }
@@ -231,22 +228,22 @@ const styles = StyleSheet.create({
   },
   eventChip: {
     backgroundColor: driverTheme.colors.grey[100],
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
   eventChipText: {
-    fontSize: 8,
+    fontSize: 12,
     fontWeight: '600',
     color: driverTheme.colors.text.primary,
   },
   eventTime: {
-    fontSize: 10,
+    fontSize: 12,
     color: driverTheme.colors.grey[600],
     textAlign: 'right',
   },
   eventLocation: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
     color: driverTheme.colors.grey[600],
   },
@@ -273,12 +270,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rejectButtonTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: driverTheme.colors.text.secondary,
   },
   acceptButtonTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: driverTheme.colors.background.paper,
   },
@@ -305,7 +302,7 @@ const styles = StyleSheet.create({
     marginBottom: driverTheme.spacing.md,
   },
   dialogTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',
     marginBottom: driverTheme.spacing.lg,
@@ -328,7 +325,7 @@ const styles = StyleSheet.create({
     borderColor: driverTheme.colors.grey[400],
   },
   dialogButtonText: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '600',
   },
 });

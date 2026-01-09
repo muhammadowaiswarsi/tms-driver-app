@@ -1,14 +1,14 @@
+import { usePathname, useRouter } from 'expo-router';
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Icon } from 'react-native-elements';
-import { useRouter, usePathname } from 'expo-router';
 import { driverTheme } from '../../theme/driverTheme';
 
 interface BottomNavigationProps {
   currentTab?: string;
 }
 
-const BottomNavigation: React.FC<BottomNavigationProps> = () => {
+const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -44,15 +44,41 @@ const BottomNavigation: React.FC<BottomNavigationProps> = () => {
     {
       label: 'Other',
       icon: 'more-horiz',
-      value: 'other',
+      value: 'others',
       path: '/(tabs)/others',
       badgeCount: 0,
     },
   ];
 
   const getCurrentValue = () => {
-    const currentItem = navigationItems.find((item) => pathname?.startsWith(item.path));
-    return currentItem?.value || 'loads';
+    // First check if currentTab prop is provided
+    if (currentTab) {
+      return currentTab;
+    }
+    
+    // Otherwise, check pathname
+    if (pathname) {
+      // Check for exact matches first
+      if (pathname.includes('/loads') || pathname.includes('/load-details')) {
+        return 'loads';
+      }
+      if (pathname.includes('/messages')) {
+        return 'messages';
+      }
+      if (pathname.includes('/others')) {
+        return 'others';
+      }
+      
+      // Fallback to pathname matching
+      const currentItem = navigationItems.find((item) => 
+        pathname.includes(item.path) || pathname === item.path
+      );
+      if (currentItem) {
+        return currentItem.value;
+      }
+    }
+    
+    return 'loads';
   };
 
   const handleNavigation = (path: string) => {
@@ -107,7 +133,7 @@ const styles = StyleSheet.create({
     backgroundColor: driverTheme.colors.background.paper,
     borderTopWidth: 1,
     borderTopColor: driverTheme.colors.divider,
-    height: 64,
+    minHeight: 80,
     paddingBottom: 8,
     paddingTop: 8,
     elevation: 8,

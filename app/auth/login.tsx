@@ -1,9 +1,18 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, Alert } from 'react-native';
-import { Button, Input, Text } from 'react-native-elements';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Input, Text } from 'react-native-elements';
 import { useAuth } from '../../src/hooks/useAuth';
+import { driverTheme } from '../../src/theme/driverTheme';
 
 export default function Login() {
   const router = useRouter();
@@ -12,6 +21,8 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const isButtonEnabled = email.trim().length > 0 && password.trim().length > 0;
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -40,7 +51,6 @@ export default function Login() {
         Alert.alert('Login Failed', 'An unknown error has occurred');
       }
     } catch (error: any) {
-      console.error('Login catch error:', error);
       const errorMessage = error?.message || error?.toString() || 'An unknown error has occurred';
       Alert.alert('Login Failed', errorMessage);
     } finally {
@@ -100,14 +110,19 @@ export default function Login() {
               containerStyle={styles.inputWrapper}
             />
 
-            <Button
-              title="Login"
-              onPress={handleLogin}
-              loading={loading}
-              buttonStyle={styles.loginButton}
-              titleStyle={styles.loginButtonText}
-              disabled={!email || !password}
-            />
+            <TouchableOpacity
+              style={isButtonEnabled ? styles.loginButton : styles.loginButtonDisabled}
+              onPress={isButtonEnabled ? handleLogin : undefined}
+              disabled={!isButtonEnabled || loading}
+              activeOpacity={0.8}>
+              {loading ? (
+                <Text style={styles.loginButtonText}>Loading...</Text>
+              ) : (
+                <Text style={isButtonEnabled ? styles.loginButtonText : styles.loginButtonTextDisabled}>
+                  Login
+                </Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
         </ScrollView>
@@ -163,14 +178,32 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   loginButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: driverTheme.colors.primary.main,
     borderRadius: 8,
-    paddingVertical: 12,
+    paddingVertical: 14,
     marginTop: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 50,
+  },
+  loginButtonDisabled: {
+    backgroundColor: driverTheme.colors.grey[300],
+    borderRadius: 8,
+    paddingVertical: 14,
+    marginTop: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 50,
   },
   loginButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  loginButtonTextDisabled: {
     fontSize: 16,
     fontWeight: '600',
+    color: driverTheme.colors.text.disabled,
   },
 });
 

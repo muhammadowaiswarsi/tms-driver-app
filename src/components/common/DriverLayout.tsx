@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, StyleSheet, SafeAreaView } from 'react-native';
-import MobileHeader from './MobileHeader';
-import BottomNavigation from './BottomNavigation';
+import { SafeAreaView, StyleSheet, View } from 'react-native';
 import { driverTheme } from '../../theme/driverTheme';
+import BottomNavigation from './BottomNavigation';
+import MobileHeader from './MobileHeader';
 
 interface DriverLayoutProps {
   children: React.ReactNode;
@@ -51,6 +51,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     width: '100%',
+    paddingBottom: 80,
   },
 });
 

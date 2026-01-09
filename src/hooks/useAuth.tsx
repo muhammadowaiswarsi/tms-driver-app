@@ -62,7 +62,6 @@ const getUserFromDb = async (user: User): Promise<any> => {
     });
     return res?.data;
   } catch (err: any) {
-    console.log('ERROR: ', err);
     throw err;
   }
 };
@@ -181,7 +180,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setAuthState(null);
       setTokens(null);
       setAuthToken(null);
-      router.replace('/auth/login');
     } catch (err) {
       setError(err);
       throw err;

@@ -48,14 +48,12 @@ export const handleQueryError = (error: ErrorResponse): void => {
 
   // Show error alert in React Native
   Alert.alert('Error', Array.isArray(errorMessage) ? errorMessage[0] : errorMessage);
-  console.error('Query Error:', error);
 };
 
 // Global success handler for mutations
 export const handleMutationSuccess = (message: string = 'Operation completed successfully'): void => {
   // In React Native, we can use a toast library or Alert
-  // For now, we'll just log it - you can integrate a toast library later
-  console.log('Success:', message);
+  // Toast library can be integrated here if needed
 };
 
 // Query key factory
