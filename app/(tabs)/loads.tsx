@@ -7,12 +7,15 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { Button, Card, Icon, Input } from 'react-native-elements';
 import DriverLayout from '../../src/components/common/DriverLayout';
 import CustomMapView from '../../src/components/common/MapView';
+import { useAuth } from '../../src/hooks/useAuth';
 import {
+  useChassis,
   useDriverActiveLoads,
   useDriverAssignedLoads,
   useDriverLoadLocationStatus,
@@ -41,8 +44,14 @@ const LoadSearch: React.FC = () => {
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [actionType, setActionType] = useState<'departed' | 'arrived' | 'complete'>('arrived');
   const [chassisNumber, setChassisNumber] = useState('');
+  const [selectedChassisId, setSelectedChassisId] = useState<string>('');
   const [containerNumber, setContainerNumber] = useState('');
   const [documents, setDocuments] = useState<any[]>([]);
+  const [chassisPickerVisible, setChassisPickerVisible] = useState(false);
+
+  const { authState } = useAuth();
+  const companyId = authState?.userData?.companyId || authState?.userData?.company?.id;
+  const { data: chassisData, isLoading: isLoadingChassis } = useChassis(companyId);
 
   const {
     data: driverUpcomingLoads,
@@ -636,102 +645,161 @@ const LoadSearch: React.FC = () => {
       {/* Document Upload Dialog */}
       {documentDialog && (
         <View style={styles.dialogOverlay}>
-          <TypedCard containerStyle={styles.documentDialogCard}>
+          <View style={styles.documentDialogCard}>
             <Text style={styles.dialogTitle}>Complete Load</Text>
-            
-            {/* Chassis Number */}
-            <View style={styles.documentField}>
-              <Text style={styles.documentFieldLabel}>Chassis #</Text>
-              <View style={styles.selectContainer}>
-                {/* For now, using a simple text input - you can replace with a proper picker */}
-                <Text style={styles.selectText}>{chassisNumber || 'Select Chassis'}</Text>
-              </View>
-            </View>
-
-            {/* Container Number */}
-            <View style={styles.documentField}>
-              <Text style={styles.documentFieldLabel}>Container #</Text>
-              <Input
-                placeholder="Container number"
-                value={containerNumber}
-                onChangeText={setContainerNumber}
-                inputContainerStyle={styles.documentInput}
-              />
-            </View>
-
-            {/* Required Documents */}
-            <Text style={styles.documentSectionTitle}>Required Documents</Text>
-            <ScrollView style={styles.documentsList} nestedScrollEnabled>
-              {documents.map((doc) => (
-                <TypedCard key={doc.id} containerStyle={[
-                  styles.documentItem,
-                  {
-                    borderColor: doc.uploaded ? driverTheme.colors.success.main : driverTheme.colors.error.main,
-                    backgroundColor: doc.uploaded ? '#E8F5E9' : '#FFEBEE',
-                  }
-                ]}>
-                  <View style={styles.documentItemContent}>
-                    <View style={styles.documentItemLeft}>
-                      <Icon
-                        name={doc.uploaded ? 'check-circle' : 'description'}
-                        type="material"
-                        color={doc.uploaded ? driverTheme.colors.success.main : driverTheme.colors.error.main}
-                        size={20}
-                      />
-                      <Text style={styles.documentItemName}>{doc.name}</Text>
+            <ScrollView
+              style={styles.documentDialogScroll}
+              contentContainerStyle={styles.documentDialogScrollContent}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled>
+              {/* Chassis Number */}
+              <View style={styles.documentField}>
+                <Text style={styles.documentFieldLabel}>Chassis #</Text>
+                <TouchableWithoutFeedback onPress={() => setChassisPickerVisible(false)}>
+                  <View>
+                    <View style={styles.dropdownContainer}>
+                      <TouchableOpacity
+                        style={styles.selectContainer}
+                        onPress={() => setChassisPickerVisible(!chassisPickerVisible)}
+                        disabled={isLoadingChassis || !chassisData?.data?.length}>
+                        {isLoadingChassis ? (
+                          <ActivityIndicator size="small" color={driverTheme.colors.primary.main} />
+                        ) : (
+                          <>
+                            <Text style={[styles.selectText, !chassisNumber && styles.selectPlaceholder]}>
+                              {chassisNumber || 'Select Chassis'}
+                            </Text>
+                            <Icon
+                              name={chassisPickerVisible ? 'arrow-drop-up' : 'arrow-drop-down'}
+                              type="material"
+                              color={driverTheme.colors.text.secondary}
+                              size={24}
+                            />
+                          </>
+                        )}
+                      </TouchableOpacity>
+                      {chassisPickerVisible && chassisData?.data && chassisData.data.length > 0 && (
+                        <View style={styles.dropdownList}>
+                          <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
+                            {chassisData.data.map((chassis: any) => (
+                              <TouchableOpacity
+                                key={chassis.id}
+                                style={[
+                                  styles.dropdownItem,
+                                  selectedChassisId === chassis.id && styles.dropdownItemSelected,
+                                ]}
+                                onPress={() => {
+                                  setSelectedChassisId(chassis.id);
+                                  setChassisNumber(chassis.chassisNumber);
+                                  setChassisPickerVisible(false);
+                                }}>
+                                <Text style={styles.dropdownItemText}>{chassis.chassisNumber}</Text>
+                                {selectedChassisId === chassis.id && (
+                                  <Icon name="check" type="material" color={driverTheme.colors.primary.main} size={20} />
+                                )}
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
+                      )}
                     </View>
-                    {doc.required && (
-                      <View style={[styles.requiredChip, { backgroundColor: driverTheme.colors.error.main }]}>
-                        <Text style={styles.requiredChipText}>Required</Text>
+                  </View>
+                </TouchableWithoutFeedback>
+              </View>
+
+              {/* Container Number */}
+              <View style={styles.documentField}>
+                <Text style={styles.documentFieldLabel}>Container #</Text>
+                <Input
+                  placeholder="Container number"
+                  value={containerNumber}
+                  onChangeText={setContainerNumber}
+                  inputContainerStyle={styles.documentInput}
+                  inputStyle={styles.documentInputText}
+                  containerStyle={styles.documentInputWrapper}
+                />
+              </View>
+
+              {/* Required Documents */}
+              <Text style={styles.documentSectionTitle}>Required Documents</Text>
+              <View style={styles.documentsList}>
+                {documents.map((doc) => (
+                  <View
+                    key={doc.id}
+                    style={[
+                      styles.documentItem,
+                      {
+                        borderColor: doc.uploaded ? driverTheme.colors.success.main : driverTheme.colors.error.main,
+                        borderWidth: 1,
+                      },
+                    ]}>
+                    <View style={styles.documentItemContent}>
+                      <View style={styles.documentItemLeft}>
+                        <Icon
+                          name={doc.uploaded ? 'check-circle' : 'description'}
+                          type="material"
+                          color={doc.uploaded ? driverTheme.colors.success.main : driverTheme.colors.text.primary}
+                          size={24}
+                        />
+                        <Text style={styles.documentItemName}>{doc.name}</Text>
+                      </View>
+                      {doc.required && !doc.uploaded && (
+                        <View style={[styles.requiredChip, { backgroundColor: driverTheme.colors.error.main }]}>
+                          <Text style={styles.requiredChipText}>Required</Text>
+                        </View>
+                      )}
+                    </View>
+                    {!doc.uploaded && (
+                      <Button
+                        title="Upload"
+                        onPress={() => {
+                          // File upload logic - you can integrate expo-document-picker or expo-image-picker here
+                          Alert.alert('Info', 'File upload functionality - integrate expo-document-picker');
+                        }}
+                        buttonStyle={[styles.uploadButton, { backgroundColor: driverTheme.colors.primary.main }]}
+                        titleStyle={styles.uploadButtonTitle}
+                        icon={<Icon name="cloud-upload" type="material" color="#fff" size={18} />}
+                        iconRight
+                      />
+                    )}
+                    {doc.uploaded && (
+                      <View style={styles.uploadedContainer}>
+                        <Icon name="check-circle" type="material" color={driverTheme.colors.success.main} size={20} />
+                        <Text style={styles.uploadedText}>Uploaded</Text>
                       </View>
                     )}
                   </View>
-                  {!doc.uploaded && (
-                    <Button
-                      title="Upload"
-                      onPress={() => {
-                        // File upload logic - you can integrate expo-document-picker or expo-image-picker here
-                        Alert.alert('Info', 'File upload functionality - integrate expo-document-picker');
-                      }}
-                      buttonStyle={[styles.uploadButton, { backgroundColor: driverTheme.colors.primary.main }]}
-                      titleStyle={styles.uploadButtonTitle}
-                      icon={<Icon name="cloud-upload" type="material" color="#fff" size={16} />}
-                    />
-                  )}
-                  {doc.uploaded && (
-                    <Text style={styles.uploadedText}>✓ Uploaded successfully</Text>
-                  )}
-                </TypedCard>
-              ))}
-            </ScrollView>
-
-            {!allRequiredDocsUploaded && (
-              <View style={styles.warningContainer}>
-                <Icon name="warning" type="material" color={driverTheme.colors.warning.main} size={20} />
-                <Text style={styles.warningText}>
-                  You must upload all required documents to complete the load
-                </Text>
+                ))}
               </View>
-            )}
 
-            <View style={styles.documentDialogButtons}>
-              <Button
-                title="Confirm"
-                onPress={handleCompleteLoad}
-                disabled={!allRequiredDocsUploaded}
-                buttonStyle={[
-                  styles.documentConfirmButton,
-                  {
-                    backgroundColor: allRequiredDocsUploaded
-                      ? driverTheme.colors.success.main
-                      : driverTheme.colors.grey[300],
-                  },
-                ]}
-                titleStyle={styles.buttonTitle}
-                icon={<Icon name="assignment" type="material" color="#fff" size={16} />}
-              />
-            </View>
-          </TypedCard>
+              {!allRequiredDocsUploaded && (
+                <View style={styles.warningContainer}>
+                  <Icon name="warning" type="material" color={driverTheme.colors.warning.main} size={20} />
+                  <Text style={styles.warningText}>
+                    You must upload all required documents to complete the load
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.documentDialogButtons}>
+                <Button
+                  title="Confirm"
+                  onPress={handleCompleteLoad}
+                  disabled={!allRequiredDocsUploaded}
+                  buttonStyle={[
+                    styles.documentConfirmButton,
+                    {
+                      backgroundColor: allRequiredDocsUploaded
+                        ? driverTheme.colors.success.main
+                        : driverTheme.colors.grey[300],
+                    },
+                  ]}
+                  titleStyle={styles.buttonTitle}
+                  icon={<Icon name="assignment" type="material" color="#fff" size={16} />}
+                />
+              </View>
+            </ScrollView>
+          </View>
         </View>
       )}
 
@@ -1038,7 +1106,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     width: '90%',
     maxWidth: 400,
-    maxHeight: '80%',
+    maxHeight: '85%',
+    backgroundColor: driverTheme.colors.background.paper,
+    padding: driverTheme.spacing.lg,
+  },
+  documentDialogScroll: {
+    maxHeight: '100%',
+  },
+  documentDialogScrollContent: {
+    paddingBottom: driverTheme.spacing.md,
   },
   documentField: {
     marginBottom: driverTheme.spacing.md,
@@ -1049,22 +1125,78 @@ const styles = StyleSheet.create({
     marginBottom: driverTheme.spacing.xs,
     color: driverTheme.colors.text.primary,
   },
+  dropdownContainer: {
+    position: 'relative',
+    zIndex: 1000,
+  },
   selectContainer: {
     borderWidth: 1,
     borderColor: driverTheme.colors.divider,
     borderRadius: 8,
     padding: driverTheme.spacing.sm,
     backgroundColor: driverTheme.colors.background.paper,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    minHeight: 48,
+  },
+  dropdownList: {
+    backgroundColor: driverTheme.colors.background.paper,
+    borderWidth: 1,
+    borderColor: driverTheme.colors.divider,
+    borderRadius: 8,
+    marginTop: 4,
+    maxHeight: 200,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    zIndex: 1001,
+  },
+  dropdownScroll: {
+    maxHeight: 200,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: driverTheme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: driverTheme.colors.divider,
+  },
+  dropdownItemSelected: {
+    backgroundColor: driverTheme.colors.primary.light,
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: driverTheme.colors.text.primary,
+    flex: 1,
   },
   selectText: {
-    fontSize: 14,
+    fontSize: 16,
     color: driverTheme.colors.text.primary,
+    flex: 1,
+  },
+  selectPlaceholder: {
+    color: driverTheme.colors.text.secondary,
   },
   documentInput: {
     borderWidth: 1,
     borderColor: driverTheme.colors.divider,
     borderRadius: 8,
     paddingHorizontal: driverTheme.spacing.sm,
+    backgroundColor: driverTheme.colors.background.paper,
+    minHeight: 48,
+  },
+  documentInputWrapper: {
+    paddingHorizontal: 0,
+    marginBottom: 0,
+  },
+  documentInputText: {
+    fontSize: 16,
+    color: driverTheme.colors.text.primary,
   },
   documentSectionTitle: {
     fontSize: 14,
@@ -1075,19 +1207,20 @@ const styles = StyleSheet.create({
   },
   documentsList: {
     maxHeight: 300,
-    marginBottom: driverTheme.spacing.md,
+    marginBottom: driverTheme.spacing.lg,
   },
   documentItem: {
     borderRadius: 8,
     marginBottom: driverTheme.spacing.sm,
     borderWidth: 1,
-    padding: driverTheme.spacing.sm,
+    padding: driverTheme.spacing.md,
+    backgroundColor: driverTheme.colors.background.paper,
   },
   documentItemContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: driverTheme.spacing.xs,
+    marginBottom: driverTheme.spacing.sm,
   },
   documentItemLeft: {
     flexDirection: 'row',
@@ -1095,15 +1228,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   documentItemName: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '500',
     marginLeft: driverTheme.spacing.sm,
     color: driverTheme.colors.text.primary,
   },
   requiredChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginLeft: driverTheme.spacing.sm,
   },
   requiredChipText: {
     color: '#fff',
@@ -1112,23 +1246,32 @@ const styles = StyleSheet.create({
   },
   uploadButton: {
     borderRadius: 8,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
   },
   uploadButtonTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+    marginLeft: 4,
+  },
+  uploadedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: driverTheme.spacing.xs,
   },
   uploadedText: {
-    fontSize: 12,
+    fontSize: 14,
     color: driverTheme.colors.success.main,
-    marginTop: driverTheme.spacing.xs,
+    marginLeft: driverTheme.spacing.xs,
+    fontWeight: '500',
   },
   warningContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF3E0',
-    padding: driverTheme.spacing.sm,
+    padding: driverTheme.spacing.md,
     borderRadius: 8,
+    marginTop: driverTheme.spacing.lg,
     marginBottom: driverTheme.spacing.md,
   },
   warningText: {

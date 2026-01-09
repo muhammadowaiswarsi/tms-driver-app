@@ -93,3 +93,15 @@ export const useDriverStartLoadRoutingMove = (id: string | number, options = {})
   );
 };
 
+export const useChassis = (companyId: string | null, options = {}): any => {
+  return useGet(
+    ['chassis', companyId] as unknown as any[],
+    '/chassis',
+    {
+      enabled: !!companyId,
+      queryParams: companyId ? { companyId, limit: 100 } : {},
+      ...options,
+    }
+  );
+};
+
