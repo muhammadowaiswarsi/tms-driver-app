@@ -201,7 +201,7 @@ const Others: React.FC = () => {
       {/* Logout Dialog */}
       {logoutDialogOpen && (
         <View style={styles.dialogOverlay}>
-          <TypedCard containerStyle={styles.dialogCard}>
+          <View style={styles.dialogCard}>
             <Text style={styles.dialogTitle}>Logout</Text>
             <Text style={styles.dialogMessage}>
               Are you sure you want to logout? You&apos;ll need to sign in again to access your account.
@@ -220,7 +220,7 @@ const Others: React.FC = () => {
                 titleStyle={styles.buttonTitle}
               />
             </View>
-          </TypedCard>
+          </View>
         </View>
       )}
     </DriverLayout>
@@ -327,11 +327,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
+    paddingHorizontal: driverTheme.spacing.md,
+    paddingBottom: 120, // Space to avoid bottom navigation
   },
   dialogCard: {
     borderRadius: 16,
-    width: '90%',
+    width: '100%',
     maxWidth: 400,
+    backgroundColor: driverTheme.colors.background.paper,
+    padding: driverTheme.spacing.lg,
   },
   dialogTitle: {
     fontSize: 20,
@@ -344,12 +348,17 @@ const styles = StyleSheet.create({
     color: driverTheme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: driverTheme.spacing.lg,
+    lineHeight: 22,
   },
   dialogButtons: {
+    flexDirection: 'row',
     gap: driverTheme.spacing.sm,
   },
   dialogButton: {
     borderRadius: 8,
+    flex: 1,
+    paddingVertical: driverTheme.spacing.sm,
+    minHeight: 48,
   },
   buttonTitle: {
     fontSize: 16,

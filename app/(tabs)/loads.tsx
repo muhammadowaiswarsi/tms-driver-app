@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Button, Card, Icon, Input } from 'react-native-elements';
 import DriverLayout from '../../src/components/common/DriverLayout';
+import CustomMapView from '../../src/components/common/MapView';
 import {
   useDriverActiveLoads,
   useDriverAssignedLoads,
@@ -316,10 +317,8 @@ const LoadSearch: React.FC = () => {
 
     return (
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Map placeholder */}
-        <View style={styles.mapContainer}>
-          <Text style={styles.mapPlaceholder}>Map View</Text>
-        </View>
+        {/* Map View */}
+        <CustomMapView height={300} />
 
         {/* Events List */}
         <View style={styles.eventsContainer}>
@@ -836,17 +835,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  mapContainer: {
-    height: 300,
-    backgroundColor: '#e61919',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mapPlaceholder: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   eventsContainer: {
     padding: driverTheme.spacing.sm,

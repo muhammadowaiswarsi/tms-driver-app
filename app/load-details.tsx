@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Button, Card, Icon } from 'react-native-elements';
 import DriverLayout from '../src/components/common/DriverLayout';
+import CustomMapView from '../src/components/common/MapView';
 import { useDriverLoadDecision, useLoadRouting } from '../src/hooks/useLoad';
 import { driverTheme } from '../src/theme/driverTheme';
 
@@ -49,7 +50,7 @@ const LoadDetails: React.FC = () => {
       await updateLoadDecision.mutateAsync({
         data: { status: 'ACCEPTED' },
       });
-    } catch (error) {
+    } catch {
       setIsAccepting(false);
       setConfirmDialog(false);
     }
@@ -61,7 +62,7 @@ const LoadDetails: React.FC = () => {
       await updateLoadDecision.mutateAsync({
         data: { status: 'REJECTED' },
       });
-    } catch (error) {
+    } catch {
       setIsRejecting(false);
       setRejectDialog(false);
     }
@@ -70,10 +71,24 @@ const LoadDetails: React.FC = () => {
   return (
     <DriverLayout title="Load Details" showBackButton onBackClick={handleBackClick}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Map placeholder */}
-        <View style={styles.mapContainer}>
-          <Text style={styles.mapPlaceholder}>Map View</Text>
-        </View>
+        {/* Map View */}
+        <CustomMapView
+          height={300}
+          markers={
+            loadRoutingData &&
+            (loadRoutingData as any).data &&
+            (loadRoutingData as any).data[0] &&
+            Array.isArray((loadRoutingData as any).data[0].events)
+              ? ((loadRoutingData as any).data[0].events as any[])
+                  .filter((event: any) => event.latitude && event.longitude)
+                  .map((event: any) => ({
+                    latitude: event.latitude,
+                    longitude: event.longitude,
+                    title: event.type?.replace(/_/g, ' ') || 'Event',
+                  }))
+              : []
+          }
+        />
 
         {/* Routing Events */}
         {loadRoutingData && (loadRoutingData as any).data && (loadRoutingData as any).data[0] && Array.isArray((loadRoutingData as any).data[0].events) && (
@@ -201,17 +216,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 100,
-  },
-  mapContainer: {
-    height: 300,
-    backgroundColor: driverTheme.colors.background.paper,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: driverTheme.spacing.md,
-  },
-  mapPlaceholder: {
-    fontSize: 16,
-    color: driverTheme.colors.text.secondary,
   },
   eventsContainer: {
     padding: driverTheme.spacing.sm,
