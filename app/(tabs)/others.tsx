@@ -357,14 +357,10 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   dialogButtons: {
-    flexDirection: 'row',
     gap: driverTheme.spacing.sm,
   },
   dialogButton: {
     borderRadius: 8,
-    flex: 1,
-    paddingVertical: driverTheme.spacing.sm,
-    minHeight: 48,
   },
   buttonTitle: {
     fontSize: 16,

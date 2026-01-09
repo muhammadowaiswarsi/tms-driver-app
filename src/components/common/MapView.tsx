@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
-import LeafletView from 'react-native-leaflet-view';
+import { StyleSheet, View, Text } from 'react-native';
+import { LeafletView } from 'react-native-leaflet-view';
 
 interface MapViewProps {
   routeCoordinates?: Array<{ latitude: number; longitude: number }>;
@@ -106,6 +106,15 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 8,
     overflow: 'hidden',
+  },
+  placeholder: {
+    backgroundColor: '#f5f5f5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    fontSize: 16,
+    color: '#999',
   },
 });
 
