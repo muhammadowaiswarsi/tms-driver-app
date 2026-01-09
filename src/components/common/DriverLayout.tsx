@@ -1,5 +1,6 @@
 import React from 'react';
-import { SafeAreaView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { driverTheme } from '../../theme/driverTheme';
 import BottomNavigation from './BottomNavigation';
 import MobileHeader from './MobileHeader';
@@ -19,8 +20,10 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({
   onBackClick,
   currentTab,
 }) => {
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.wrapper}>
         {/* Header */}
         <MobileHeader
@@ -35,7 +38,7 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({
         {/* Bottom Navigation */}
         <BottomNavigation currentTab={currentTab} />
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -51,7 +54,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     width: '100%',
-    paddingBottom: 80,
   },
 });
 

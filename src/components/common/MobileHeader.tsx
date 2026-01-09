@@ -1,7 +1,7 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Icon } from 'react-native-elements';
 import { useRouter } from 'expo-router';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Icon } from 'react-native-elements';
 import { driverTheme } from '../../theme/driverTheme';
 
 interface MobileHeaderProps {
@@ -30,10 +30,12 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.toolbar}>
-        {showBackButton && (
+        {showBackButton ? (
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Icon name="arrow-back" type="material" color={driverTheme.colors.text.primary} size={24} />
           </TouchableOpacity>
+        ) : (
+          <View style={styles.backButton} />
         )}
 
         <Text style={styles.title}>{title}</Text>

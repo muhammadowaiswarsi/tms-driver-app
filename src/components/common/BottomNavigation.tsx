@@ -2,6 +2,7 @@ import { usePathname, useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Icon } from 'react-native-elements';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { driverTheme } from '../../theme/driverTheme';
 
 interface BottomNavigationProps {
@@ -11,6 +12,7 @@ interface BottomNavigationProps {
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
   const router = useRouter();
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
 
   const navigationItems = [
     {
@@ -88,7 +90,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
   const currentValue = getCurrentValue();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       {navigationItems.map((item) => {
         const isActive = currentValue === item.value;
         return (
@@ -126,6 +128,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {

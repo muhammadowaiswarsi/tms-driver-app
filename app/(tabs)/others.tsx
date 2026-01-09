@@ -186,7 +186,7 @@ const Others: React.FC = () => {
         </TypedCard>
 
         {/* Logout Section */}
-        <TypedCard containerStyle={styles.sectionCard}>
+        <TypedCard containerStyle={styles.logoutCard}>
           <TouchableOpacity
             style={styles.logoutButton}
             onPress={handleLogoutClick}
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 0, // No extra padding - content should be close to bottom nav
   },
   profileCard: {
     borderRadius: 0,
@@ -264,6 +264,12 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     margin: 0,
     marginBottom: driverTheme.spacing.sm,
+    padding: 0,
+  },
+  logoutCard: {
+    borderRadius: 0,
+    margin: 0,
+    marginBottom: 0, // No margin at bottom for last item
     padding: 0,
   },
   sectionTitle: {
