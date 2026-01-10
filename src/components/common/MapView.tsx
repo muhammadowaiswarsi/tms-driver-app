@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, View, Text } from 'react-native';
-import { LeafletView } from 'react-native-leaflet-view';
+import { StyleSheet, View } from 'react-native';
+import { WebView } from 'react-native-webview';
 
 interface MapViewProps {
   routeCoordinates?: Array<{ latitude: number; longitude: number }>;
@@ -35,67 +35,89 @@ const CustomMapView: React.FC<MapViewProps> = ({
     return [40.7128, -74.0060];
   };
 
-  // Convert markers to Leaflet format
-  const leafletMarkers = useMemo(() => {
-    const markerList: any[] = [];
-
-    // Add current location marker
+  // Generate Map HTML using Leaflet (OpenStreetMap - free, no API key needed)
+  const mapHtml = useMemo(() => {
+    const center = getCenter();
+    const [lat, lng] = center;
+    const zoom = 13;
+    
+    // Build markers array
+    const allMarkers: Array<{ lat: number; lng: number; title?: string }> = [];
+    
     if (currentLocation) {
-      markerList.push({
-        id: 'current-location',
-        position: [currentLocation.latitude, currentLocation.longitude],
-        icon: '📍',
-        size: [32, 32],
+      allMarkers.push({
+        lat: currentLocation.latitude,
+        lng: currentLocation.longitude,
+        title: 'Current Location',
       });
     }
-
-    // Add custom markers
-    markers.forEach((marker, index) => {
-      markerList.push({
-        id: `marker-${index}`,
-        position: [marker.latitude, marker.longitude],
-        icon: '📍',
-        size: [32, 32],
-        title: marker.title || `Marker ${index + 1}`,
+    
+    markers.forEach((marker) => {
+      allMarkers.push({
+        lat: marker.latitude,
+        lng: marker.longitude,
+        title: marker.title,
       });
     });
-
-    return markerList;
-  }, [currentLocation, markers]);
-
-  // Convert route coordinates to polyline
-  const polylines = useMemo(() => {
-    if (!showRoute || routeCoordinates.length < 2) {
-      return [];
+    
+    // Build route polyline if available
+    let routePolyline = '';
+    if (showRoute && routeCoordinates.length >= 2) {
+      const path = routeCoordinates
+        .map((coord) => `[${coord.latitude}, ${coord.longitude}]`)
+        .join(', ');
+      routePolyline = `
+        var polyline = L.polyline([${path}], {color: '#4285F4', weight: 4}).addTo(map);
+        map.fitBounds(polyline.getBounds());
+      `;
     }
-
-    return [
-      {
-        positions: routeCoordinates.map((coord) => [coord.latitude, coord.longitude]),
-        color: '#4285F4',
-        weight: 4,
-      },
-    ];
-  }, [routeCoordinates, showRoute]);
+    
+    // Build markers JavaScript
+    const markersJs = allMarkers
+      .map((marker, index) => `
+        L.marker([${marker.lat}, ${marker.lng}])
+          .addTo(map)
+          ${marker.title ? `.bindPopup('${marker.title}')` : ''};
+      `)
+      .join('');
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            html, body { width: 100%; height: 100%; }
+            #map { width: 100%; height: 100%; }
+          </style>
+        </head>
+        <body>
+          <div id="map"></div>
+          <script>
+            var map = L.map('map').setView([${lat}, ${lng}], ${zoom});
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '© OpenStreetMap contributors',
+              maxZoom: 19
+            }).addTo(map);
+            ${markersJs}
+            ${routePolyline}
+          </script>
+        </body>
+      </html>
+    `;
+  }, [currentLocation, markers, routeCoordinates, showRoute]);
 
   return (
     <View style={[styles.container, { height }]}>
-      <LeafletView
-        mapCenterPosition={getCenter()}
-        mapMarkers={leafletMarkers}
-        mapLines={polylines}
-        zoom={13}
-        mapLayers={[
-          {
-            baseLayer: true,
-            baseLayerName: 'OpenStreetMap',
-            url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            attribution: '© OpenStreetMap contributors',
-          },
-        ]}
-        onMessage={(message) => {
-          // Handle map events if needed
-        }}
+      <WebView
+        source={{ html: mapHtml }}
+        style={styles.webview}
+        scrollEnabled={false}
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
       />
     </View>
   );
@@ -106,6 +128,10 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 8,
     overflow: 'hidden',
+    backgroundColor: '#f5f5f5',
+  },
+  webview: {
+    backgroundColor: 'transparent',
   },
   placeholder: {
     backgroundColor: '#f5f5f5',
