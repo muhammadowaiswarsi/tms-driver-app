@@ -1,17 +1,11 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { Button, Card, Icon } from 'react-native-elements';
-import DriverLayout from '../src/components/common/DriverLayout';
-import CustomMapView from '../src/components/common/MapView';
-import { useDriverLoadDecision, useLoadRouting } from '../src/hooks/useLoad';
-import { driverTheme } from '../src/theme/driverTheme';
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useState } from "react";
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Button, Card, Icon } from "react-native-elements";
+import DriverLayout from "../src/components/common/DriverLayout";
+import CustomMapView from "../src/components/common/MapView";
+import { useDriverLoadDecision, useLoadRouting } from "../src/hooks/useLoad";
+import { driverTheme } from "../src/theme/driverTheme";
 
 // Type assertion helper for Card component (React Native Elements types don't include children)
 const TypedCard = Card as any;
@@ -25,7 +19,7 @@ const LoadDetails: React.FC = () => {
   const [isRejecting, setIsRejecting] = useState(false);
 
   const loadId = params.loadId as string;
-  const { data: loadRoutingData } = useLoadRouting(loadId || '');
+  const { data: loadRoutingData } = useLoadRouting(loadId || "");
 
   const handleBackClick = () => {
     router.back();
@@ -35,12 +29,12 @@ const LoadDetails: React.FC = () => {
     setConfirmDialog(true);
   };
 
-  const updateLoadDecision = useDriverLoadDecision(loadId || '', {
+  const updateLoadDecision = useDriverLoadDecision(loadId || "", {
     onSuccess: () => {
-      router.push('/(tabs)/loads');
+      router.push("/(tabs)/loads");
     },
     onError: () => {
-      Alert.alert('Error', 'Failed to update load decision');
+      Alert.alert("Error", "Failed to update load decision");
     },
   });
 
@@ -48,7 +42,7 @@ const LoadDetails: React.FC = () => {
     setIsAccepting(true);
     try {
       await updateLoadDecision.mutateAsync({
-        data: { status: 'ACCEPTED' },
+        data: { status: "ACCEPTED" },
       });
     } catch {
       setIsAccepting(false);
@@ -60,7 +54,7 @@ const LoadDetails: React.FC = () => {
     setIsRejecting(true);
     try {
       await updateLoadDecision.mutateAsync({
-        data: { status: 'REJECTED' },
+        data: { status: "REJECTED" },
       });
     } catch {
       setIsRejecting(false);
@@ -69,8 +63,15 @@ const LoadDetails: React.FC = () => {
   };
 
   return (
-    <DriverLayout title="Load Details" showBackButton onBackClick={handleBackClick}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+    <DriverLayout
+      title="Load Details"
+      showBackButton
+      onBackClick={handleBackClick}
+    >
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* Map View */}
         <CustomMapView
           height={300}
@@ -84,54 +85,59 @@ const LoadDetails: React.FC = () => {
                   .map((event: any) => ({
                     latitude: event.latitude,
                     longitude: event.longitude,
-                    title: event.type?.replace(/_/g, ' ') || 'Event',
+                    title: event.type?.replace(/_/g, " ") || "Event",
                   }))
               : []
           }
         />
 
         {/* Routing Events */}
-        {loadRoutingData && (loadRoutingData as any).data && (loadRoutingData as any).data[0] && Array.isArray((loadRoutingData as any).data[0].events) && (
-          <View style={styles.eventsContainer}>
-            {((loadRoutingData as any).data[0].events as any[]).map((event: any, index: number) => (
-              <TypedCard key={index} containerStyle={styles.eventCard}>
-                <View style={styles.eventHeader}>
-                  <View style={styles.eventChip}>
-                    <Text style={styles.eventChipText}>
-                      {event.type.replace(/_/g, ' ').toUpperCase()}
+        {loadRoutingData &&
+          (loadRoutingData as any).data &&
+          (loadRoutingData as any).data[0] &&
+          Array.isArray((loadRoutingData as any).data[0].events) && (
+            <View style={styles.eventsContainer}>
+              {((loadRoutingData as any).data[0].events as any[]).map(
+                (event: any, index: number) => (
+                  <TypedCard key={index} containerStyle={styles.eventCard}>
+                    <View style={styles.eventHeader}>
+                      <View style={styles.eventChip}>
+                        <Text style={styles.eventChipText}>
+                          {event.type.replace(/_/g, " ").toUpperCase()}
+                        </Text>
+                      </View>
+                      {event.createdAt && (
+                        <Text style={styles.eventTime}>
+                          {new Date(event.createdAt).toLocaleDateString()}
+                          {"\n"}
+                          {new Date(event.createdAt).toLocaleTimeString()}
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={styles.eventLocation}>
+                      {event.location || "Location not specified"}
                     </Text>
-                  </View>
-                  {event.createdAt && (
-                    <Text style={styles.eventTime}>
-                      {new Date(event.createdAt).toLocaleDateString()}
-                      {'\n'}
-                      {new Date(event.createdAt).toLocaleTimeString()}
-                    </Text>
-                  )}
-                </View>
-                <Text style={styles.eventLocation}>
-                  {event.location || 'Location not specified'}
-                </Text>
-              </TypedCard>
-            ))}
-          </View>
-        )}
+                  </TypedCard>
+                )
+              )}
+            </View>
+          )}
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
           <Button
-            title="Reject"
-            onPress={() => setRejectDialog(true)}
-            buttonStyle={[styles.actionButton, styles.rejectButton]}
-            titleStyle={styles.rejectButtonTitle}
-          />
-          <Button
-            title={isAccepting ? 'Accepting...' : 'Accept Load'}
+            title={isAccepting ? "Accepting..." : "Accept Load"}
             onPress={handleAcceptLoad}
             disabled={isAccepting}
-            buttonStyle={[styles.actionButton, styles.acceptButton]}
+            buttonStyle={styles.acceptButton}
             titleStyle={styles.acceptButtonTitle}
             loading={isAccepting}
+          />
+          <Button
+            title="Reject Load"
+            onPress={() => setRejectDialog(true)}
+            buttonStyle={[styles.rejectButton]}
+            titleStyle={styles.rejectButtonTitle}
           />
         </View>
       </ScrollView>
@@ -147,28 +153,31 @@ const LoadDetails: React.FC = () => {
               color={driverTheme.colors.grey[600]}
               containerStyle={styles.dialogIcon}
             />
-            <Text style={styles.dialogTitle}>Are you sure you want to accept this load?</Text>
+            <Text style={styles.dialogTitle}>
+              Are you sure you want to accept this load?
+            </Text>
             <View style={styles.dialogButtons}>
               <Button
-                title={isAccepting ? 'Accepting...' : 'Accept'}
+                title={isAccepting ? "Accepting..." : "Accept"}
                 onPress={handleConfirmAccept}
                 disabled={isAccepting}
-                buttonStyle={[styles.dialogButton, { backgroundColor: driverTheme.colors.primary.main }]}
-                titleStyle={styles.dialogButtonText}
               />
-              <Button
+              {/* <Button
                 title="Accept with navigation"
                 onPress={() => setConfirmDialog(false)}
                 disabled={isAccepting}
                 buttonStyle={[styles.dialogButton, { backgroundColor: driverTheme.colors.grey[400] }]}
                 titleStyle={styles.dialogButtonText}
-              />
+              /> */}
               <Button
                 title="Cancel"
                 onPress={() => setConfirmDialog(false)}
                 disabled={isAccepting}
-                buttonStyle={[styles.dialogButton, styles.dialogButtonOutlined]}
-                titleStyle={[styles.dialogButtonText, { color: driverTheme.colors.grey[600] }]}
+                buttonStyle={[styles.dialogButtonOutlined]}
+                titleStyle={[
+                  styles.dialogButtonText,
+                  { color: driverTheme.colors.grey[600] },
+                ]}
               />
             </View>
           </View>
@@ -186,13 +195,18 @@ const LoadDetails: React.FC = () => {
               color={driverTheme.colors.error.main}
               containerStyle={styles.dialogIcon}
             />
-            <Text style={styles.dialogTitle}>Are you sure you want to reject this load?</Text>
+            <Text style={styles.dialogTitle}>
+              Are you sure you want to reject this load?
+            </Text>
             <View style={styles.dialogButtons}>
               <Button
-                title={isRejecting ? 'Rejecting...' : 'Yes, Reject Load'}
+                title={isRejecting ? "Rejecting..." : "Yes, Reject Load"}
                 onPress={handleConfirmReject}
                 disabled={isRejecting}
-                buttonStyle={[styles.dialogButton, { backgroundColor: driverTheme.colors.error.main }]}
+                buttonStyle={[
+                  styles.dialogButton,
+                  { backgroundColor: driverTheme.colors.error.main },
+                ]}
                 titleStyle={styles.dialogButtonText}
               />
               <Button
@@ -200,7 +214,10 @@ const LoadDetails: React.FC = () => {
                 onPress={() => setRejectDialog(false)}
                 disabled={isRejecting}
                 buttonStyle={[styles.dialogButton, styles.dialogButtonOutlined]}
-                titleStyle={[styles.dialogButtonText, { color: driverTheme.colors.grey[600] }]}
+                titleStyle={[
+                  styles.dialogButtonText,
+                  { color: driverTheme.colors.grey[600] },
+                ]}
               />
             </View>
           </View>
@@ -226,8 +243,8 @@ const styles = StyleSheet.create({
     padding: driverTheme.spacing.sm,
   },
   eventHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: driverTheme.spacing.xs,
   },
   eventChip: {
@@ -238,21 +255,21 @@ const styles = StyleSheet.create({
   },
   eventChipText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: driverTheme.colors.text.primary,
   },
   eventTime: {
     fontSize: 12,
     color: driverTheme.colors.grey[600],
-    textAlign: 'right',
+    textAlign: "right",
   },
   eventLocation: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: driverTheme.colors.grey[600],
   },
   actionButtons: {
-    flexDirection: 'row',
+    flexDirection: "column",
     gap: driverTheme.spacing.md,
     padding: driverTheme.spacing.md,
     paddingBottom: driverTheme.spacing.lg,
@@ -261,78 +278,75 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: driverTheme.spacing.md,
     minHeight: 50,
+    width: "100%",
   },
   rejectButton: {
     backgroundColor: driverTheme.colors.background.paper,
     borderWidth: 1,
     borderColor: driverTheme.colors.grey[400],
-    width: 80,
-    flex: 0,
   },
   acceptButton: {
     backgroundColor: driverTheme.colors.success.main,
-    flex: 1,
   },
   rejectButtonTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: driverTheme.colors.text.secondary,
   },
   acceptButtonTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: driverTheme.colors.background.paper,
   },
   dialogOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
     zIndex: 1000,
   },
   dialogCard: {
     borderRadius: 16,
-    width: '90%',
+    width: "90%",
     maxWidth: 400,
     backgroundColor: driverTheme.colors.background.paper,
     padding: driverTheme.spacing.lg,
-    alignItems: 'center',
+    alignItems: "center",
   },
   dialogIcon: {
     marginBottom: driverTheme.spacing.md,
   },
   dialogTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: "600",
+    textAlign: "center",
     marginBottom: driverTheme.spacing.lg,
     color: driverTheme.colors.text.primary,
   },
   dialogButtons: {
-    width: '100%',
+    width: "100%",
     gap: driverTheme.spacing.sm,
-    alignItems: 'stretch',
+    alignItems: "stretch",
   },
   dialogButton: {
     borderRadius: 8,
-    width: '100%',
+    width: "100%",
     minHeight: 50,
     paddingVertical: driverTheme.spacing.md,
   },
   dialogButtonOutlined: {
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     borderWidth: 1,
     borderColor: driverTheme.colors.grey[400],
   },
   dialogButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 
 export default LoadDetails;
-

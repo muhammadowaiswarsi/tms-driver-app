@@ -1,5 +1,5 @@
 import { queryKeys } from '../lib/react-query';
-import { useGet, usePatch } from './useApi';
+import { useDelete, useGet, usePatch, usePost } from './useApi';
 
 export const useLoads = (filters = {}): any => {
   return useGet(queryKeys.loads.list(filters) as unknown as any[], '/loads', {
@@ -100,6 +100,49 @@ export const useChassis = (companyId: string | null, options = {}): any => {
     {
       enabled: !!companyId,
       queryParams: companyId ? { companyId, limit: 100 } : {},
+      ...options,
+    }
+  );
+};
+
+export const useCreateLoadDocument = (loadId: string | number, options = {}): Record<string, any> => {
+  return usePost(
+    [...queryKeys.loads.detail(loadId), 'documents'] as unknown as any[],
+    `/loads/${loadId}/documents`,
+    {
+      successMessage: 'Load document created successfully',
+      ...options,
+    }
+  );
+};
+
+export const useLoadDocuments = (loadId: string | number) => {
+  return useGet(
+    [...queryKeys.loads.detail(loadId), 'documents'] as unknown as any[],
+    `/loads/${loadId}/documents`,
+    {
+      enabled: !!loadId,
+    }
+  );
+};
+
+export const useUpdateLoadDocument = (loadId: string | number, options = {}): Record<string, any> => {
+  return usePatch(
+    [...queryKeys.loads.detail(loadId), 'documents'] as unknown as any[],
+    `/loads/${loadId}/documents`,
+    {
+      successMessage: 'Load document updated successfully',
+      ...options,
+    }
+  );
+};
+
+export const useDeleteLoadDocument = (loadId: string | number, options = {}): Record<string, any> => {
+  return useDelete(
+    [...queryKeys.loads.detail(loadId), 'documents'] as unknown as any[],
+    `/loads/${loadId}/documents`,
+    {
+      successMessage: 'Load document deleted successfully',
       ...options,
     }
   );
