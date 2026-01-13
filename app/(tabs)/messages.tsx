@@ -1,5 +1,6 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -22,6 +23,8 @@ import {
   useGetMessages,
   useSendMessage,
 } from "../../src/hooks/useMessaging";
+import { useWebSocketMessaging } from "../../src/hooks/useWebSocketMessaging";
+import { queryKeys } from "../../src/lib/react-query";
 import { driverTheme } from "../../src/theme/driverTheme";
 
 interface Conversation {
@@ -57,8 +60,11 @@ const Messages: React.FC = () => {
   const [openNewMessageDialog, setOpenNewMessageDialog] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<FlatList>(null);
   const { authState } = useAuth();
+  const queryClient = useQueryClient();
 
   const {
     data: messagesResponse,
@@ -73,6 +79,118 @@ const Messages: React.FC = () => {
   } = useGetConversations({
     search: searchTerm,
     limit: 100,
+  });
+
+  // WebSocket connection for real-time messaging
+  const {
+    isConnected,
+    joinConversation,
+    leaveConversation,
+    sendMessage: sendWebSocketMessage,
+    sendTyping,
+    markMessagesAsRead,
+  } = useWebSocketMessaging({
+    onNewMessage: (newMessage: any) => {
+      // Update messages cache
+      if (selectedConversation && newMessage.conversationId === selectedConversation.id) {
+        const queryKey = queryKeys.messaging.conversationMessagesList(
+          selectedConversation.id,
+          {}
+        );
+        const currentData = queryClient.getQueryData(queryKey);
+        if (currentData && (currentData as any).data) {
+          // Check if message already exists to avoid duplicates
+          const messageExists = (currentData as any).data.some(
+            (msg: any) => msg.id === newMessage.id
+          );
+          if (!messageExists) {
+            queryClient.setQueryData(queryKey, {
+              ...currentData,
+              data: [
+                ...(currentData as any).data,
+                {
+                  ...newMessage,
+                  isFromMe: newMessage.senderId === authState?.userData?.id,
+                },
+              ],
+            });
+          }
+        } else {
+          // If no cache, refetch
+          refetchMessages();
+        }
+      }
+      // Update conversations list to show new message preview
+      refetchConversations();
+    },
+    onMessageSent: (sentMessage: any) => {
+      // Update messages cache with sent message
+      if (selectedConversation && sentMessage.conversationId === selectedConversation.id) {
+        const queryKey = queryKeys.messaging.conversationMessagesList(
+          selectedConversation.id,
+          {}
+        );
+        const currentData = queryClient.getQueryData(queryKey);
+        if (currentData && (currentData as any).data) {
+          const messageExists = (currentData as any).data.some(
+            (msg: any) => msg.id === sentMessage.id
+          );
+          if (!messageExists) {
+            queryClient.setQueryData(queryKey, {
+              ...currentData,
+              data: [...(currentData as any).data, { ...sentMessage, isFromMe: true }],
+            });
+          }
+        } else {
+          refetchMessages();
+        }
+      }
+      refetchConversations();
+    },
+    onUserTyping: (data: { conversationId: string | number; userId: string | number; isTyping: boolean }) => {
+      if (selectedConversation && data.conversationId === selectedConversation.id) {
+        setTypingUsers((prev) => ({
+          ...prev,
+          [String(data.userId)]: data.isTyping,
+        }));
+        // Clear typing indicator after 3 seconds
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+        }
+        if (data.isTyping) {
+          typingTimeoutRef.current = setTimeout(() => {
+            setTypingUsers((prev) => ({
+              ...prev,
+              [String(data.userId)]: false,
+            }));
+          }, 3000);
+        }
+      }
+    },
+    onMessagesRead: (data: { conversationId: string | number; messageIds: (string | number)[] }) => {
+      // Update message status to read in cache
+      if (selectedConversation && data.conversationId === selectedConversation.id) {
+        const queryKey = queryKeys.messaging.conversationMessagesList(
+          selectedConversation.id,
+          {}
+        );
+        const currentData = queryClient.getQueryData(queryKey);
+        if (currentData && (currentData as any).data) {
+          const updatedData = (currentData as any).data.map((msg: any) => {
+            if (data.messageIds.includes(msg.id)) {
+              return { ...msg, status: "READ" };
+            }
+            return msg;
+          });
+          queryClient.setQueryData(queryKey, {
+            ...currentData,
+            data: updatedData,
+          });
+        }
+      }
+      refetchConversations();
+    },
+    enabled: !!authState?.isAuthenticated,
   });
 
   const { data: usersResponse, isLoading: usersLoading } =
@@ -107,6 +225,35 @@ const Messages: React.FC = () => {
   const conversations: Conversation[] = conversationsResponse?.data || [];
   const companyUsers: User[] = usersResponse?.data || [];
 
+  // Join conversation room when conversation is selected
+  useEffect(() => {
+    if (selectedConversation?.id && isConnected) {
+      joinConversation(selectedConversation.id);
+
+      // Mark all unread messages as read when opening conversation
+      const unreadMessages = messages.filter(
+        (msg: any) => !msg.isFromMe && msg.status !== "READ"
+      );
+      if (unreadMessages.length > 0) {
+        const messageIds = unreadMessages.map((msg: any) => msg.id);
+        markMessagesAsRead(selectedConversation.id, messageIds);
+      }
+    }
+
+    return () => {
+      if (selectedConversation?.id && isConnected) {
+        leaveConversation(selectedConversation.id);
+      }
+    };
+  }, [
+    selectedConversation?.id,
+    isConnected,
+    joinConversation,
+    leaveConversation,
+    markMessagesAsRead,
+    messages,
+  ]);
+
   // Auto scroll to last message
   useEffect(() => {
     if (messages.length > 0 && messagesEndRef.current) {
@@ -130,13 +277,57 @@ const Messages: React.FC = () => {
 
   const handleSendMessage = () => {
     if (message.trim() && selectedConversation) {
-      sendMessageMutation.mutate({
-        conversationId: selectedConversation.id,
-        content: message.trim(),
-        type: "TEXT",
-      });
+      // Use WebSocket if connected, otherwise fallback to REST API
+      if (isConnected) {
+        sendWebSocketMessage({
+          conversationId: selectedConversation.id,
+          content: message.trim(),
+          type: "TEXT",
+        });
+        setMessage("");
+      } else {
+        // Fallback to REST API only if WebSocket is not connected
+        sendMessageMutation.mutate({
+          conversationId: selectedConversation.id,
+          content: message.trim(),
+          type: "TEXT",
+        });
+      }
     }
   };
+
+  // Handle typing indicator
+  const handleTyping = useCallback(
+    (isTyping: boolean) => {
+      if (selectedConversation?.id && isConnected) {
+        sendTyping(selectedConversation.id, isTyping);
+      }
+    },
+    [selectedConversation?.id, isConnected, sendTyping]
+  );
+
+  // Update typing indicator when message input changes
+  useEffect(() => {
+    if (!selectedConversation?.id || !isConnected) {
+      return;
+    }
+
+    if (message.trim()) {
+      handleTyping(true);
+
+      // Clear typing after user stops typing for 1 second
+      const timeout = setTimeout(() => {
+        handleTyping(false);
+      }, 1000);
+
+      return () => {
+        clearTimeout(timeout);
+        handleTyping(false);
+      };
+    } else {
+      handleTyping(false);
+    }
+  }, [message, selectedConversation?.id, isConnected, handleTyping]);
 
   const handleUserSelect = (user: User) => {
     setSelectedUser(user);
@@ -290,7 +481,7 @@ const Messages: React.FC = () => {
     <DriverLayout
       title={
         selectedConversation
-          ? selectedConversation.otherParticipant.name
+          ? `${selectedConversation.otherParticipant.name}${isConnected ? " ●" : ""}`
           : "Messages"
       }
       showBackButton
@@ -431,9 +622,6 @@ const Messages: React.FC = () => {
                   color={driverTheme.colors.text.secondary}
                 />
                 <Text style={styles.emptyTitle}>No messages yet</Text>
-                <Text style={styles.emptySubtitle}>
-                  Start a conversation by tapping the + button
-                </Text>
               </View>
             ) : (
               <FlatList
@@ -463,17 +651,31 @@ const Messages: React.FC = () => {
                 </Text>
               </View>
             ) : (
-              <FlatList
-                ref={messagesEndRef}
-                data={messages}
-                renderItem={renderMessageItem}
-                keyExtractor={(item) => String(item.id)}
-                style={styles.messagesList}
-                contentContainerStyle={styles.messagesListContent}
-                onContentSizeChange={() => {
-                  messagesEndRef.current?.scrollToEnd({ animated: true });
-                }}
-              />
+              <>
+                <FlatList
+                  ref={messagesEndRef}
+                  data={messages}
+                  renderItem={renderMessageItem}
+                  keyExtractor={(item) => String(item.id)}
+                  style={styles.messagesList}
+                  contentContainerStyle={styles.messagesListContent}
+                  onContentSizeChange={() => {
+                    messagesEndRef.current?.scrollToEnd({ animated: true });
+                  }}
+                />
+                {/* Typing indicator */}
+                {Object.entries(typingUsers).some(
+                  ([_, isTyping]) => isTyping
+                ) && selectedConversation && (
+                  <View style={styles.typingContainer}>
+                    <View style={styles.typingBubble}>
+                      <Text style={styles.typingText}>
+                        {selectedConversation.otherParticipant.name} is typing...
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </>
             )}
 
             {/* Message Input */}
@@ -502,7 +704,7 @@ const Messages: React.FC = () => {
                 )}
               </TouchableOpacity>
             </View>
-          </View>
+      </View>
         )}
       </KeyboardAvoidingView>
     </DriverLayout>
@@ -834,6 +1036,24 @@ const styles = StyleSheet.create({
     color: driverTheme.colors.text.secondary,
     textAlign: "center",
     fontWeight: "600",
+  },
+  typingContainer: {
+    paddingHorizontal: driverTheme.spacing.md,
+    paddingBottom: driverTheme.spacing.sm,
+    alignItems: "flex-start",
+  },
+  typingBubble: {
+    backgroundColor: driverTheme.colors.background.paper,
+    padding: driverTheme.spacing.md,
+    borderRadius: driverTheme.borderRadius.md,
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: driverTheme.borderRadius.xl,
+    maxWidth: "75%",
+  },
+  typingText: {
+    fontSize: 14,
+    fontStyle: "italic",
+    color: driverTheme.colors.text.secondary,
   },
 });
 
