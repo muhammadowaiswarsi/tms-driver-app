@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { handleMutationSuccess, handleQueryError } from '../lib/react-query';
 import { customAxios } from '../services/api';
-import { handleQueryError, handleMutationSuccess, queryKeys } from '../lib/react-query';
 
 // Generic GET hook with query parameter support
 export const useGet = (queryKey: any[], url: string, options: any = {}) => {
@@ -8,6 +8,9 @@ export const useGet = (queryKey: any[], url: string, options: any = {}) => {
   return useQuery({
     queryKey,
     queryFn: async () => {
+      if (!url) {
+        throw new Error('URL is required');
+      }
       let finalUrl = url;
       if (queryParams && Object.keys(queryParams).length > 0) {
         const params = new URLSearchParams();

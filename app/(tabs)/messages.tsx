@@ -70,7 +70,7 @@ const Messages: React.FC = () => {
     data: messagesResponse,
     isLoading: isLoadingMessages,
     refetch: refetchMessages,
-  } = useGetMessages(selectedConversation?.id || null, {});
+  } = useGetMessages(selectedConversation?.id, {});
 
   const {
     data: conversationsResponse,
@@ -188,6 +188,7 @@ const Messages: React.FC = () => {
           });
         }
       }
+      // Refetch conversations to update unread count
       refetchConversations();
     },
     enabled: !!authState?.isAuthenticated,
@@ -225,19 +226,17 @@ const Messages: React.FC = () => {
   const conversations: Conversation[] = conversationsResponse?.data || [];
   const companyUsers: User[] = usersResponse?.data || [];
 
+  // Refetch messages when conversation is selected (web code behavior)
+  useEffect(() => {
+    if (selectedConversation?.id) {
+      refetchMessages();
+    }
+  }, [selectedConversation?.id, refetchMessages]);
+
   // Join conversation room when conversation is selected
   useEffect(() => {
     if (selectedConversation?.id && isConnected) {
       joinConversation(selectedConversation.id);
-
-      // Mark all unread messages as read when opening conversation
-      const unreadMessages = messages.filter(
-        (msg: any) => !msg.isFromMe && msg.status !== "READ"
-      );
-      if (unreadMessages.length > 0) {
-        const messageIds = unreadMessages.map((msg: any) => msg.id);
-        markMessagesAsRead(selectedConversation.id, messageIds);
-      }
     }
 
     return () => {
@@ -250,6 +249,22 @@ const Messages: React.FC = () => {
     isConnected,
     joinConversation,
     leaveConversation,
+  ]);
+
+  // Mark all unread messages as read when opening conversation and messages are loaded
+  useEffect(() => {
+    if (selectedConversation?.id && isConnected && messages.length > 0) {
+      const unreadMessages = messages.filter(
+        (msg: any) => !msg.isFromMe && msg.status !== "READ"
+      );
+      if (unreadMessages.length > 0) {
+        const messageIds = unreadMessages.map((msg: any) => msg.id);
+        markMessagesAsRead(selectedConversation.id, messageIds);
+      }
+    }
+  }, [
+    selectedConversation?.id,
+    isConnected,
     markMessagesAsRead,
     messages,
   ]);
@@ -393,21 +408,23 @@ const Messages: React.FC = () => {
           <Text style={styles.conversationName} numberOfLines={1}>
             {item.otherParticipant.name}
           </Text>
-          {item.lastMessageAt && (
-            <Text style={styles.conversationTime}>
-              {formatMessageTime(item.lastMessageAt)}
-            </Text>
-          )}
+          <View style={styles.conversationHeaderRight}>
+            {item.lastMessageAt && (
+              <Text style={styles.conversationTime}>
+                {formatMessageTime(item.lastMessageAt)}
+              </Text>
+            )}
+            {item.unreadCount && item.unreadCount > 0 ? (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
         <View style={styles.conversationFooter}>
           <Text style={styles.conversationPreview} numberOfLines={1}>
             {item.lastMessagePreview || "No messages yet"}
           </Text>
-          {item.unreadCount && item.unreadCount > 0 ? (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
-            </View>
-          ) : null}
         </View>
       </View>
     </TouchableOpacity>
@@ -782,10 +799,15 @@ const styles = StyleSheet.create({
     color: driverTheme.colors.text.primary,
     flex: 1,
   },
+  conversationHeaderRight: {
+    flexDirection: "column",
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
   conversationTime: {
     fontSize: 12,
     color: driverTheme.colors.text.secondary,
-    marginLeft: driverTheme.spacing.sm,
+    marginBottom: driverTheme.spacing.xs,
   },
   conversationFooter: {
     flexDirection: "row",
@@ -805,7 +827,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 6,
-    marginLeft: driverTheme.spacing.sm,
   },
   unreadBadgeText: {
     color: "#fff",

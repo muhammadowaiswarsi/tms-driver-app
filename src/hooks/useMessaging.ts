@@ -23,10 +23,10 @@ export const useGetConversations = (filters = {}): any => {
   );
 };
 
-export const useGetMessages = (conversationId: string | number | null, filters = {}): any => {
+export const useGetMessages = (conversationId: string | number | null | undefined, filters = {}): any => {
   return useGet(
-    queryKeys.messaging.conversationMessagesList(conversationId, filters) as unknown as any[],
-    `/messaging/conversations/${conversationId}/messages`,
+    queryKeys.messaging.conversationMessagesList(conversationId || null, filters) as unknown as any[],
+    conversationId ? `/messaging/conversations/${conversationId}/messages` : '/messaging/conversations/null/messages',
     {
       enabled: !!conversationId,
       queryParams: filters,
