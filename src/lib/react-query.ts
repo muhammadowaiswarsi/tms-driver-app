@@ -81,5 +81,18 @@ export const queryKeys = {
     details: () => [...queryKeys.chassis.all, 'detail'] as const,
     detail: (id: string | number) => [...queryKeys.chassis.details(), id] as const,
   },
+  messaging: {
+    all: ['messaging'] as const,
+    conversations: () => [...queryKeys.messaging.all, 'conversations'] as const,
+    conversationsList: (filters: QueryFilters) => [...queryKeys.messaging.conversations(), 'list', { ...filters }] as const,
+    conversationMessages: (conversationId: string | number | null) => [...queryKeys.messaging.all, 'conversations', conversationId, 'messages'] as const,
+    conversationMessagesList: (conversationId: string | number | null, filters: QueryFilters) => [...queryKeys.messaging.conversationMessages(conversationId), 'list', { ...filters }] as const,
+    messages: () => [...queryKeys.messaging.all, 'messages'] as const,
+  },
+  drivers: {
+    all: ['drivers'] as const,
+    lists: () => [...queryKeys.drivers.all, 'list'] as const,
+    list: (filters: QueryFilters) => [...queryKeys.drivers.lists(), { ...filters }] as const,
+  },
 };
 
