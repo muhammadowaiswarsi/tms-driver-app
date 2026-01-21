@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Avatar, Button, Card, Icon } from 'react-native-elements';
+import CheckInOut from '../../src/components/common/CheckInOut';
 import DriverLayout from '../../src/components/common/DriverLayout';
 import { useAuth } from '../../src/hooks/useAuth';
 import { driverTheme } from '../../src/theme/driverTheme';
@@ -22,6 +23,7 @@ const Others: React.FC = () => {
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [locationEnabled, setLocationEnabled] = useState(true);
+  const [checkInOutModalOpen, setCheckInOutModalOpen] = useState(false);
   const { logout: logoutAuth, authState } = useAuth();
   const { userData } = authState || {};
 
@@ -56,6 +58,13 @@ const Others: React.FC = () => {
       icon: 'person',
       type: 'navigation',
       action: () => router.push('/(tabs)/loads?tab=active' as any),
+    },
+    {
+      id: 'checkInOut',
+      title: 'Check In/Out',
+      icon: 'access-time',
+      type: 'navigation',
+      action: () => setCheckInOutModalOpen(true),
     },
     {
       id: 'notifications',
@@ -197,6 +206,13 @@ const Others: React.FC = () => {
           </TouchableOpacity>
         </TypedCard>
       </ScrollView>
+
+      {/* Check In/Out Modal */}
+      <CheckInOut
+        visible={checkInOutModalOpen}
+        onClose={() => setCheckInOutModalOpen(false)}
+        userName={userData?.name}
+      />
 
       {/* Logout Dialog */}
       {logoutDialogOpen && (

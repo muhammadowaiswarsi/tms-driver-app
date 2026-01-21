@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { Icon } from "react-native-elements";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import DriverLayout from "../../src/components/common/DriverLayout";
 import { useAuth } from "../../src/hooks/useAuth";
 import { useAllDriversByCompany } from "../../src/hooks/useDrivers";
@@ -65,6 +66,7 @@ const Messages: React.FC = () => {
   const messagesEndRef = useRef<FlatList>(null);
   const { authState } = useAuth();
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
 
   const {
     data: messagesResponse,
@@ -439,20 +441,31 @@ const Messages: React.FC = () => {
           : styles.messageContainerLeft,
       ]}
     >
-      <View
-        style={[
-          styles.messageBubble,
-          item.isFromMe ? styles.messageBubbleRight : styles.messageBubbleLeft,
-        ]}
-      >
-        <Text
+      {!item.isFromMe && (
+        <View style={styles.messageAvatarContainer}>
+          <View style={styles.messageAvatar}>
+            <Text style={styles.messageAvatarText}>
+              {getInitials(selectedConversation?.otherParticipant.name || '')}
+            </Text>
+          </View>
+        </View>
+      )}
+      <View style={styles.messageBubbleWrapper}>
+        <View
           style={[
-            styles.messageText,
-            item.isFromMe ? styles.messageTextRight : styles.messageTextLeft,
+            styles.messageBubble,
+            item.isFromMe ? styles.messageBubbleRight : styles.messageBubbleLeft,
           ]}
         >
-          {item.content}
-        </Text>
+          <Text
+            style={[
+              styles.messageText,
+              item.isFromMe ? styles.messageTextRight : styles.messageTextLeft,
+            ]}
+          >
+            {item.content}
+          </Text>
+        </View>
         <Text
           style={[
             styles.messageTime,
@@ -496,14 +509,11 @@ const Messages: React.FC = () => {
 
   return (
     <DriverLayout
-      title={
-        selectedConversation
-          ? `${selectedConversation.otherParticipant.name}${isConnected ? " ●" : ""}`
-          : "Messages"
-      }
-      showBackButton
+      title={selectedConversation ? "" : "Messages"}
+      showBackButton={!selectedConversation}
       onBackClick={handleBackClick}
       currentTab="messages"
+      hideHeader={!!selectedConversation}
     >
       <KeyboardAvoidingView
         style={styles.container}
@@ -653,6 +663,37 @@ const Messages: React.FC = () => {
         ) : (
           // Chat View
           <View style={styles.chatContainer}>
+            {/* Custom Chat Header */}
+            {selectedConversation && (
+              <View style={[styles.chatHeader, { paddingTop: insets.top + driverTheme.spacing.sm }]}>
+                <TouchableOpacity
+                  onPress={handleBackClick}
+                  style={styles.chatHeaderBackButton}
+                >
+                  <Icon name="arrow-back" type="material" size={24} color={driverTheme.colors.text.primary} />
+                </TouchableOpacity>
+                <View style={styles.chatHeaderAvatar}>
+                  <Text style={styles.chatHeaderAvatarText}>
+                    {getInitials(selectedConversation.otherParticipant.name)}
+                  </Text>
+                </View>
+                <View style={styles.chatHeaderInfo}>
+                  <View style={styles.chatHeaderNameRow}>
+                    <Text style={styles.chatHeaderName}>
+                      {selectedConversation.otherParticipant.name}
+                    </Text>
+                    {isConnected && (
+                      <View style={styles.chatHeaderStatusDot} />
+                    )}
+                  </View>
+                </View>
+                {/* <View style={styles.chatHeaderActions}>
+                  <TouchableOpacity style={styles.chatHeaderActionButton}>
+                    <Icon name="more-vert" type="material" size={24} color={driverTheme.colors.text.primary} />
+                  </TouchableOpacity>
+                </View> */}
+              </View>
+            )}
             {/* Messages Area */}
             {isLoadingMessages ? (
               <View style={styles.loadingContainer}>
@@ -717,7 +758,7 @@ const Messages: React.FC = () => {
                 {sendMessageMutation.isPending ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Icon name="send" type="material" color="#fff" size={20} />
+                  <Icon name="send" type="material" color="#fff" size={22} />
                 )}
               </TouchableOpacity>
             </View>
@@ -844,28 +885,48 @@ const styles = StyleSheet.create({
     padding: driverTheme.spacing.md,
   },
   messageContainer: {
-    marginBottom: driverTheme.spacing.sm,
+    marginBottom: driverTheme.spacing.md,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingHorizontal: driverTheme.spacing.md,
   },
   messageContainerLeft: {
-    alignItems: "flex-start",
+    justifyContent: "flex-start",
   },
   messageContainerRight: {
-    alignItems: "flex-end",
+    justifyContent: "flex-end",
+  },
+  messageAvatarContainer: {
+    marginRight: driverTheme.spacing.xs,
+    marginTop: 2,
+  },
+  messageAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: driverTheme.colors.primary.main,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  messageAvatarText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  messageBubbleWrapper: {
+    maxWidth: "75%",
+    flexDirection: "column",
   },
   messageBubble: {
-    maxWidth: "75%",
-    padding: driverTheme.spacing.md,
-    borderRadius: driverTheme.borderRadius.md,
+    paddingHorizontal: driverTheme.spacing.md,
+    paddingVertical: driverTheme.spacing.sm,
+    borderRadius: 16,
   },
   messageBubbleLeft: {
-    backgroundColor: driverTheme.colors.background.paper,
-    borderTopLeftRadius: 4,
-    borderTopRightRadius: driverTheme.borderRadius.xl,
+    backgroundColor: driverTheme.colors.grey[200],
   },
   messageBubbleRight: {
     backgroundColor: driverTheme.colors.primary.main,
-    borderTopLeftRadius: driverTheme.borderRadius.xl,
-    borderTopRightRadius: 4,
   },
   messageText: {
     fontSize: 16,
@@ -879,14 +940,76 @@ const styles = StyleSheet.create({
   },
   messageTime: {
     fontSize: 11,
-    marginTop: driverTheme.spacing.xs,
-    opacity: 0.7,
+    marginTop: 4,
+    paddingHorizontal: driverTheme.spacing.xs,
+    opacity: 0.6,
   },
   messageTimeLeft: {
     color: driverTheme.colors.text.secondary,
+    alignSelf: "flex-start",
   },
   messageTimeRight: {
+    color: driverTheme.colors.text.secondary,
+    alignSelf: "flex-end",
+  },
+  chatHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: driverTheme.spacing.md,
+    paddingVertical: driverTheme.spacing.sm,
+    backgroundColor: driverTheme.colors.background.paper,
+    borderBottomWidth: 1,
+    borderBottomColor: driverTheme.colors.divider,
+  },
+  chatHeaderBackButton: {
+    marginRight: driverTheme.spacing.sm,
+  },
+  chatHeaderAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: driverTheme.colors.primary.main,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: driverTheme.spacing.sm,
+  },
+  chatHeaderAvatarText: {
     color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  chatHeaderInfo: {
+    flex: 1,
+    flexDirection: "column",
+  },
+  chatHeaderNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  chatHeaderName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: driverTheme.colors.text.primary,
+    marginRight: driverTheme.spacing.xs,
+  },
+  chatHeaderStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: driverTheme.colors.text.secondary,
+  },
+  chatHeaderStatus: {
+    fontSize: 12,
+    color: driverTheme.colors.text.secondary,
+    marginTop: 2,
+  },
+  chatHeaderActions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  chatHeaderActionButton: {
+    padding: driverTheme.spacing.xs,
+    marginLeft: driverTheme.spacing.sm,
   },
   inputContainer: {
     flexDirection: "row",
@@ -902,15 +1025,16 @@ const styles = StyleSheet.create({
     paddingVertical: driverTheme.spacing.sm,
     paddingHorizontal: driverTheme.spacing.md,
     backgroundColor: driverTheme.colors.grey[100],
-    borderRadius: driverTheme.borderRadius.lg,
+    borderRadius: 24,
     fontSize: 16,
     color: driverTheme.colors.text.primary,
     marginRight: driverTheme.spacing.sm,
+    borderWidth: 0,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: driverTheme.colors.primary.main,
     justifyContent: "center",
     alignItems: "center",

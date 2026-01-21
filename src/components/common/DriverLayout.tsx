@@ -11,6 +11,7 @@ interface DriverLayoutProps {
   showBackButton?: boolean;
   onBackClick?: () => void;
   currentTab?: string;
+  hideHeader?: boolean;
 }
 
 const DriverLayout: React.FC<DriverLayoutProps> = ({
@@ -19,18 +20,21 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({
   showBackButton,
   onBackClick,
   currentTab,
+  hideHeader = false,
 }) => {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: hideHeader ? 0 : insets.top }]}>
       <View style={styles.wrapper}>
         {/* Header */}
-        <MobileHeader
-          title={title}
-          showBackButton={showBackButton}
-          onBackClick={onBackClick}
-        />
+        {!hideHeader && (
+          <MobileHeader
+            title={title}
+            showBackButton={showBackButton}
+            onBackClick={onBackClick}
+          />
+        )}
 
         {/* Main Content */}
         <View style={styles.content}>{children}</View>
