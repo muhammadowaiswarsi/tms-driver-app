@@ -9,6 +9,7 @@ interface MobileHeaderProps {
   showBackButton?: boolean;
   onBackClick?: () => void;
   notificationCount?: number;
+  subtitle?: string;
 }
 
 const MobileHeader: React.FC<MobileHeaderProps> = ({
@@ -16,6 +17,7 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
   showBackButton = false,
   onBackClick,
   notificationCount = 0,
+  subtitle,
 }) => {
   const router = useRouter();
 
@@ -25,6 +27,21 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
     } else {
       router.back();
     }
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const getFormattedDate = () => {
+    const now = new Date();
+    const options: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
+    const date = now.toLocaleDateString('en-US', options);
+    const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return `${date} - ${time}`;
   };
 
   return (
@@ -38,7 +55,10 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
           <View style={styles.backButton} />
         )}
 
-        <Text style={styles.title}>{title}</Text>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>{title}</Text>
+          {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+        </View>
 
         <TouchableOpacity style={styles.notificationButton}>
           <Icon
@@ -54,6 +74,12 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
           )}
         </TouchableOpacity>
       </View>
+      {title === 'Clock In' && (
+        <View style={styles.greetingContainer}>
+          <Text style={styles.greeting}>{getGreeting()}, Tamara!</Text>
+          <Text style={styles.dateTime}>{getFormattedDate()}</Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -77,12 +103,21 @@ const styles = StyleSheet.create({
     marginRight: driverTheme.spacing.sm,
     padding: driverTheme.spacing.xs,
   },
-  title: {
+  titleContainer: {
     flex: 1,
+    alignItems: 'center',
+  },
+  title: {
     textAlign: 'center',
     fontSize: driverTheme.typography.h6.fontSize,
     fontWeight: '600',
     color: driverTheme.colors.text.primary,
+  },
+  subtitle: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: driverTheme.colors.text.secondary,
+    marginTop: 2,
   },
   notificationButton: {
     marginLeft: driverTheme.spacing.sm,
@@ -105,6 +140,21 @@ const styles = StyleSheet.create({
     color: driverTheme.colors.error.contrastText,
     fontSize: 10,
     fontWeight: '600',
+  },
+  greetingContainer: {
+    paddingHorizontal: driverTheme.spacing.lg,
+    paddingVertical: driverTheme.spacing.md,
+    backgroundColor: driverTheme.colors.background.paper,
+  },
+  greeting: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: driverTheme.colors.text.primary,
+    marginBottom: 4,
+  },
+  dateTime: {
+    fontSize: 14,
+    color: driverTheme.colors.text.secondary,
   },
 });
 

@@ -21,18 +21,6 @@ export default function TabLayout() {
           href: null, // Hide from tab bar
         }}
       />
-      {/* <Tabs.Screen
-        name="clock-in"
-        options={{
-          href: null, // Hide from tab bar
-        }}
-      />
-      <Tabs.Screen
-        name="pay"
-        options={{
-          href: null, // Hide from tab bar
-        }}
-      /> */}
       <Tabs.Screen
         name="messages"
         options={{

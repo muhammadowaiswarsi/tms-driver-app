@@ -110,3 +110,13 @@ export interface NavigationItem {
   active?: boolean;
 }
 
+export interface ShiftStatus {
+  isCheckedIn: boolean;
+  isOnBreak: boolean;
+  currentCheckIn?: string;
+  lastCheckOut?: string;
+  currentBreakStart?: string;
+  lastBreakStart?: string;
+  lastBreakEnd?: string;
+}
+

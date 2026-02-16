@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Modal,
   ScrollView,
@@ -7,9 +8,15 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { Button, Icon } from 'react-native-elements';
-import { driverTheme } from '../../theme/driverTheme';
+} from "react-native";
+import { Button, Icon } from "react-native-elements";
+import {
+  useDriverBreakToggle,
+  useDriverShiftStatus,
+  useDriverShiftToggle,
+} from "../../hooks/useShift";
+import { driverTheme } from "../../theme/driverTheme";
+import { ShiftStatus } from "../../types/driver.types";
 
 interface CheckInOutProps {
   visible: boolean;
@@ -17,72 +24,121 @@ interface CheckInOutProps {
   userName?: string;
 }
 
-const CheckInOut: React.FC<CheckInOutProps> = ({ visible, onClose, userName }) => {
-  const [isClockedIn, setIsClockedIn] = useState(false);
-  const [shiftStartTime, setShiftStartTime] = useState<Date | null>(null);
+const CheckInOut: React.FC<CheckInOutProps> = ({
+  visible,
+  onClose,
+  userName,
+}) => {
+  const { data: shiftStatus, isLoading, refetch } = useDriverShiftStatus();
+  const shiftToggle = useDriverShiftToggle({ onSuccess: () => refetch() });
+  const breakToggle = useDriverBreakToggle({ onSuccess: () => refetch() });
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [breakTime, setBreakTime] = useState(0);
 
-  // Timer effect for clocked in state
+  const isClockedIn = ((shiftStatus as any)?.data as ShiftStatus)?.isCheckedIn || false;
+  const isOnBreak = ((shiftStatus as any)?.data as ShiftStatus)?.isOnBreak || false;
+  const shiftStartTime = ((shiftStatus as any)?.data as ShiftStatus)?.currentCheckIn
+    ? new Date(((shiftStatus as any)?.data as ShiftStatus).currentCheckIn!)
+    : null;
+
+  useEffect(() => {
+    if (visible) {
+      refetch();
+    }
+  }, [visible, refetch]);
+
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (isClockedIn && shiftStartTime) {
       interval = setInterval(() => {
         const now = new Date();
-        const diff = Math.floor((now.getTime() - shiftStartTime.getTime()) / 1000);
+        const diff = Math.floor(
+          (now.getTime() - shiftStartTime.getTime()) / 1000,
+        );
         setElapsedTime(diff);
+      }, 1000);
+    }
+    if (isOnBreak && ((shiftStatus as any)?.data as ShiftStatus)?.currentBreakStart) {
+      const breakStart = new Date(((shiftStatus as any)?.data as ShiftStatus).currentBreakStart!);
+      interval = setInterval(() => {
+        const now = new Date();
+        const diff = Math.floor((now.getTime() - breakStart.getTime()) / 1000);
+        setBreakTime(diff);
       }, 1000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isClockedIn, shiftStartTime]);
+  }, [
+    isClockedIn,
+    shiftStartTime,
+    isOnBreak,
+    ((shiftStatus as any)?.data as ShiftStatus)?.currentBreakStart,
+  ]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
   };
 
   const formatDateTime = () => {
     const now = new Date();
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
     const day = days[now.getDay()];
     const month = months[now.getMonth()];
     const date = now.getDate();
     const hours = now.getHours();
     const minutes = now.getMinutes();
-    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const ampm = hours >= 12 ? "PM" : "AM";
     const displayHours = hours % 12 || 12;
-    return `${day}, ${month} ${date} - ${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`;
+    return `${day}, ${month} ${date} - ${String(displayHours).padStart(2, "0")}:${String(minutes).padStart(2, "0")} ${ampm}`;
   };
 
   const handleStartShift = () => {
-    setIsClockedIn(true);
-    setShiftStartTime(new Date());
-    setElapsedTime(0);
+    shiftToggle.mutate({ action: "in" });
   };
 
   const handleEndShift = () => {
-    setIsClockedIn(false);
-    setShiftStartTime(null);
-    setElapsedTime(0);
-    onClose();
+    Alert.alert("End Shift", "Are you sure you want to end your shift?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "End Shift",
+        onPress: () => {
+          shiftToggle.mutate({ action: "out" });
+          onClose();
+        },
+      },
+    ]);
   };
 
   const handlePauseBreak = () => {
-    Alert.alert('Break Started', 'Your break has started. Timer is paused.');
+    breakToggle.mutate({ action: isOnBreak ? "end" : "start" });
   };
 
-  const displayName = userName?.split(' ')[0] || 'User';
+  const displayName = userName?.split(" ")[0] || "User";
 
   return (
     <Modal
@@ -100,83 +156,111 @@ const CheckInOut: React.FC<CheckInOutProps> = ({ visible, onClose, userName }) =
           <View style={styles.headerSpacer} />
         </View>
 
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-          {/* Greeting */}
-          <Text style={styles.greetingText}>
-            {getGreeting()}, {displayName}!
-          </Text>
-
-          {/* Date and Time */}
-          <Text style={styles.dateTimeText}>{formatDateTime()}</Text>
-
-          {/* Status */}
-          <View
-            style={[
-              styles.statusPill,
-              {
-                backgroundColor: isClockedIn
-                  ? driverTheme.colors.primary.main
-                  : driverTheme.colors.grey[200],
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.statusDot,
-                {
-                  backgroundColor: isClockedIn ? '#4CAF50' : driverTheme.colors.text.secondary,
-                },
-              ]}
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+        >
+          {isLoading ? (
+            <ActivityIndicator
+              size="large"
+              color={driverTheme.colors.primary.main}
             />
-            <Text
-              style={[
-                styles.statusPillText,
-                {
-                  color: isClockedIn
-                    ? driverTheme.colors.primary.contrastText
-                    : driverTheme.colors.text.primary,
-                },
-              ]}
-            >
-              Status: {isClockedIn ? 'On Duty' : 'Off Duty'}
-            </Text>
-          </View>
-
-          {!isClockedIn ? (
-            // Clocked Out State
-            <>
-              <TouchableOpacity
-                style={styles.startShiftButton}
-                onPress={handleStartShift}
-                activeOpacity={0.8}
-              >
-                <View style={styles.startShiftButtonInner}>
-                  <Icon name="play-arrow" type="material" color="#fff" size={48} />
-                </View>
-              </TouchableOpacity>
-              <Text style={styles.startShiftText}>START SHIFT</Text>
-              <Text style={styles.lastShiftText}>Last Shift: Ended at 5:30 PM yesterday</Text>
-            </>
           ) : (
-            // Clocked In State
             <>
-              <View style={styles.timerContainer}>
-                <Text style={styles.timerText}>{formatTime(elapsedTime)}</Text>
-              </View>
-              <View style={styles.buttonsContainer}>
-                <Button
-                  title="PAUSE FOR BREAK"
-                  onPress={handlePauseBreak}
-                  buttonStyle={[styles.actionButton, styles.pauseButton]}
-                  titleStyle={styles.actionButtonTitle}
+              <Text style={styles.greetingText}>
+                {getGreeting()}, {displayName}!
+              </Text>
+
+              {/* Date and Time */}
+              <Text style={styles.dateTimeText}>{formatDateTime()}</Text>
+
+              {/* Status */}
+              <View
+                style={[
+                  styles.statusPill,
+                  {
+                    backgroundColor: isClockedIn
+                      ? driverTheme.colors.primary.main
+                      : driverTheme.colors.grey[200],
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.statusDot,
+                    {
+                      backgroundColor: isClockedIn
+                        ? "#4CAF50"
+                        : driverTheme.colors.text.secondary,
+                    },
+                  ]}
                 />
-                <Button
-                  title="END SHIFT"
-                  onPress={handleEndShift}
-                  buttonStyle={[styles.actionButton, styles.endShiftButton]}
-                  titleStyle={styles.actionButtonTitle}
-                />
+                <Text
+                  style={[
+                    styles.statusPillText,
+                    {
+                      color: isClockedIn
+                        ? driverTheme.colors.primary.contrastText
+                        : driverTheme.colors.text.primary,
+                    },
+                  ]}
+                >
+                  Status: {isClockedIn ? "On Duty" : "Off Duty"}
+                </Text>
               </View>
+
+              {!isClockedIn ? (
+                // Clocked Out State
+                <>
+                  <TouchableOpacity
+                    style={styles.startShiftButton}
+                    onPress={handleStartShift}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.startShiftButtonInner}>
+                      <Icon
+                        name="play-arrow"
+                        type="material"
+                        color="#fff"
+                        size={48}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                  <Text style={styles.startShiftText}>START SHIFT</Text>
+                </>
+              ) : (
+                // Clocked In State
+                <>
+                  <View style={styles.timerContainer}>
+                    <Text style={styles.timerText}>
+                      {formatTime(elapsedTime)}
+                    </Text>
+                    {isOnBreak && (
+                      <Text style={styles.breakTimerText}>
+                        Break: {formatTime(breakTime)}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.buttonsContainer}>
+                    <Button
+                      title={isOnBreak ? "END BREAK" : "PAUSE FOR BREAK"}
+                      onPress={handlePauseBreak}
+                      loading={breakToggle.isPending}
+                      disabled={breakToggle.isPending}
+                      buttonStyle={[styles.actionButton, styles.pauseButton]}
+                      titleStyle={styles.actionButtonTitle}
+                    />
+                    <Button
+                      title="END SHIFT"
+                      onPress={handleEndShift}
+                      loading={shiftToggle.isPending}
+                      disabled={shiftToggle.isPending}
+                      buttonStyle={[styles.actionButton, styles.endShiftButton]}
+                      titleStyle={styles.actionButtonTitle}
+                    />
+                  </View>
+                </>
+              )}
             </>
           )}
         </ScrollView>
@@ -191,8 +275,8 @@ const styles = StyleSheet.create({
     backgroundColor: driverTheme.colors.background.default,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: driverTheme.spacing.md,
     backgroundColor: driverTheme.colors.background.paper,
     borderBottomWidth: 1,
@@ -203,7 +287,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: driverTheme.colors.text.primary,
     flex: 1,
   },
@@ -215,12 +299,12 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: driverTheme.spacing.xl,
-    alignItems: 'center',
-    width: '100%',
+    alignItems: "center",
+    width: "100%",
   },
   greetingText: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: "600",
     color: driverTheme.colors.text.primary,
     marginBottom: driverTheme.spacing.sm,
   },
@@ -230,8 +314,8 @@ const styles = StyleSheet.create({
     marginBottom: driverTheme.spacing.lg,
   },
   statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: driverTheme.spacing.md,
     paddingVertical: driverTheme.spacing.sm,
     borderRadius: 20,
@@ -245,18 +329,18 @@ const styles = StyleSheet.create({
   },
   statusPillText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   startShiftButton: {
     width: 120,
     height: 120,
     borderRadius: 60,
     backgroundColor: driverTheme.colors.primary.main,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: driverTheme.spacing.md,
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
@@ -266,35 +350,38 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     backgroundColor: driverTheme.colors.primary.dark,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   startShiftText: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: driverTheme.colors.text.primary,
     marginBottom: driverTheme.spacing.xl,
-  },
-  lastShiftText: {
-    fontSize: 14,
-    color: driverTheme.colors.text.secondary,
   },
   timerContainer: {
     marginBottom: driverTheme.spacing.xl,
   },
   timerText: {
     fontSize: 48,
-    fontWeight: '600',
+    fontWeight: "600",
     color: driverTheme.colors.text.primary,
-    fontFamily: 'monospace',
+    fontFamily: "monospace",
+  },
+  breakTimerText: {
+    fontSize: 24,
+    fontWeight: "500",
+    color: driverTheme.colors.text.secondary,
+    fontFamily: "monospace",
+    marginTop: driverTheme.spacing.sm,
   },
   buttonsContainer: {
-    width: '100%',
+    width: "100%",
     paddingHorizontal: 0,
     gap: driverTheme.spacing.sm,
   },
   actionButton: {
-    width: '100%',
+    width: "100%",
     borderRadius: 8,
     marginBottom: 0,
   },
@@ -308,8 +395,8 @@ const styles = StyleSheet.create({
   },
   actionButtonTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: "600",
+    color: "#fff",
   },
 });
 
