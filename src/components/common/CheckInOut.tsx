@@ -35,10 +35,21 @@ const CheckInOut: React.FC<CheckInOutProps> = ({
   const [elapsedTime, setElapsedTime] = useState(0);
   const [breakTime, setBreakTime] = useState(0);
 
-  const isClockedIn = ((shiftStatus as any)?.data as ShiftStatus)?.isCheckedIn || false;
-  const isOnBreak = ((shiftStatus as any)?.data as ShiftStatus)?.isOnBreak || false;
-  const shiftStartTime = ((shiftStatus as any)?.data as ShiftStatus)?.currentCheckIn
-    ? new Date(((shiftStatus as any)?.data as ShiftStatus).currentCheckIn!)
+  const shiftData = ((shiftStatus as any)?.data || {}) as ShiftStatus & {
+    lastCheckIn?: string;
+    lastBreakStart?: string;
+  };
+
+  const isClockedIn = shiftData.isCheckedIn || false;
+  const isOnBreak = shiftData.isOnBreak || false;
+
+  // Match web logic: fall back to lastCheckIn if currentCheckIn missing
+  const checkInTime = shiftData.currentCheckIn ?? shiftData.lastCheckIn;
+  const shiftStartTime = checkInTime ? new Date(checkInTime) : null;
+
+  // Match web logic: use lastBreakStart for current/last break start
+  const breakStartTime = shiftData.lastBreakStart
+    ? new Date(shiftData.lastBreakStart)
     : null;
 
   useEffect(() => {
@@ -49,32 +60,36 @@ const CheckInOut: React.FC<CheckInOutProps> = ({
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
+
     if (isClockedIn && shiftStartTime) {
-      interval = setInterval(() => {
+      const updateTimes = () => {
         const now = new Date();
-        const diff = Math.floor(
+        const totalSeconds = Math.floor(
           (now.getTime() - shiftStartTime.getTime()) / 1000,
         );
-        setElapsedTime(diff);
-      }, 1000);
+        setElapsedTime(totalSeconds);
+
+        if (isOnBreak && breakStartTime) {
+          const breakSeconds = Math.floor(
+            (now.getTime() - breakStartTime.getTime()) / 1000,
+          );
+          setBreakTime(breakSeconds);
+        } else {
+          setBreakTime(0);
+        }
+      };
+
+      updateTimes();
+      interval = setInterval(updateTimes, 1000);
+    } else {
+      setElapsedTime(0);
+      setBreakTime(0);
     }
-    if (isOnBreak && ((shiftStatus as any)?.data as ShiftStatus)?.currentBreakStart) {
-      const breakStart = new Date(((shiftStatus as any)?.data as ShiftStatus).currentBreakStart!);
-      interval = setInterval(() => {
-        const now = new Date();
-        const diff = Math.floor((now.getTime() - breakStart.getTime()) / 1000);
-        setBreakTime(diff);
-      }, 1000);
-    }
+
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [
-    isClockedIn,
-    shiftStartTime,
-    isOnBreak,
-    ((shiftStatus as any)?.data as ShiftStatus)?.currentBreakStart,
-  ]);
+  }, [isClockedIn, isOnBreak, shiftStartTime, breakStartTime]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -179,9 +194,11 @@ const CheckInOut: React.FC<CheckInOutProps> = ({
                 style={[
                   styles.statusPill,
                   {
-                    backgroundColor: isClockedIn
-                      ? driverTheme.colors.primary.main
-                      : driverTheme.colors.grey[200],
+                    backgroundColor: !isClockedIn
+                      ? driverTheme.colors.grey[200]
+                      : isOnBreak
+                      ? driverTheme.colors.warning.main
+                      : driverTheme.colors.primary.main,
                   },
                 ]}
               >
@@ -189,9 +206,11 @@ const CheckInOut: React.FC<CheckInOutProps> = ({
                   style={[
                     styles.statusDot,
                     {
-                      backgroundColor: isClockedIn
-                        ? "#4CAF50"
-                        : driverTheme.colors.text.secondary,
+                      backgroundColor: !isClockedIn
+                        ? driverTheme.colors.text.secondary
+                        : isOnBreak
+                        ? driverTheme.colors.warning.main
+                        : driverTheme.colors.success.main,
                     },
                   ]}
                 />
@@ -205,7 +224,12 @@ const CheckInOut: React.FC<CheckInOutProps> = ({
                     },
                   ]}
                 >
-                  Status: {isClockedIn ? "On Duty" : "Off Duty"}
+                  Status:{" "}
+                  {isClockedIn
+                    ? isOnBreak
+                      ? "On Break"
+                      : "On Duty"
+                    : "Off Duty"}
                 </Text>
               </View>
 
@@ -243,11 +267,14 @@ const CheckInOut: React.FC<CheckInOutProps> = ({
                   </View>
                   <View style={styles.buttonsContainer}>
                     <Button
-                      title={isOnBreak ? "END BREAK" : "PAUSE FOR BREAK"}
+                      title={isOnBreak ? "END BREAK" : "START BREAK"}
                       onPress={handlePauseBreak}
                       loading={breakToggle.isPending}
                       disabled={breakToggle.isPending}
-                      buttonStyle={[styles.actionButton, styles.pauseButton]}
+                      buttonStyle={[
+                        styles.actionButton,
+                        isOnBreak ? styles.breakButton : styles.pauseButton,
+                      ]}
                       titleStyle={styles.actionButtonTitle}
                     />
                     <Button
@@ -389,6 +416,11 @@ const styles = StyleSheet.create({
     backgroundColor: driverTheme.colors.grey[500],
     borderWidth: 1,
     borderColor: driverTheme.colors.grey[400],
+  },
+  breakButton: {
+    backgroundColor: driverTheme.colors.warning.main,
+    borderWidth: 1,
+    borderColor: driverTheme.colors.warning.dark,
   },
   endShiftButton: {
     backgroundColor: driverTheme.colors.primary.main,
