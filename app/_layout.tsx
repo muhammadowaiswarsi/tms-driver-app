@@ -13,12 +13,21 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as Notifications from 'expo-notifications';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import ProtectedRoute from '../src/components/ProtectedRoute';
 import '../src/config/amplify'; // Initialize AWS Amplify
 import { AuthProvider } from '../src/hooks/useAuth';
 import { queryClient } from '../src/lib/react-query';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export const unstable_settings = {
   anchor: '(tabs)',

@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import AuthService from '../services/AuthService';
 import { customAxios, setAuthToken, setRefreshTokenCallback } from '../services/api';
+import { setupPushTokenAndSync } from '../services/pushToken';
 
 interface User {
   username?: string;
@@ -109,6 +110,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             });
             setTokens(result.tokens || null);
           }
+          setupPushTokenAndSync().catch(() => {});
         } else {
           setAuthState(null);
           setTokens(null);
@@ -160,6 +162,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             });
             setTokens(result.tokens || null);
           }
+          setupPushTokenAndSync().catch(() => {});
         } else {
           setAuthState(result);
           setTokens(result.tokens || null);

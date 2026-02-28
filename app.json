@@ -24,17 +24,28 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.driverapp.mobile"
+      "package": "com.driverapp.mobile",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "default"
+        }
+      ]
     ],
     "scheme": "driverapp",
     "extra": {
-      "apiUrl": "http://localhost:8080/api"
+      "apiUrl": "http://localhost:8080/api",
+      "router": {},
+      "eas": {
+        "projectId": "12e5d8c6-1bff-42ba-b748-c4bc4809f6bc"
+      }
     }
   }
 }
