@@ -1158,7 +1158,7 @@ const LoadSearch: React.FC = () => {
 
               {/* Documents */}
               <Text style={styles.documentSectionTitle}>Documents</Text>
-              <View style={styles.documentsList}>
+              <View>
                 {documents.map((doc) => (
                   <View
                     key={doc.id}
@@ -1651,7 +1651,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   documentField: {
-    marginBottom: driverTheme.spacing.md,
+    marginBottom: driverTheme.spacing.xs,
   },
   documentFieldLabel: {
     fontSize: 14,
@@ -1737,9 +1737,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: driverTheme.spacing.md,
     color: driverTheme.colors.text.primary,
-  },
-  documentsList: {
-    marginBottom: driverTheme.spacing.lg,
   },
   documentItem: {
     borderRadius: 8,

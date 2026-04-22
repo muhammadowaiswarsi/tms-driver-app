@@ -52,6 +52,10 @@ interface User {
   email?: string;
 }
 
+const CHAT_LIGHT_BLUE = "#f0f7ff";
+const CHAT_LIGHT_BLUE_BORDER = "#B7CAE9";
+const CHAT_LIGHT_BLUE_SOFT = "#f0f7ff";
+
 const Messages: React.FC = () => {
   const router = useRouter();
   const [selectedConversation, setSelectedConversation] =
@@ -772,10 +776,11 @@ const Messages: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: driverTheme.colors.background.default,
+    backgroundColor: CHAT_LIGHT_BLUE_SOFT,
   },
   conversationsContainer: {
     flex: 1,
+    backgroundColor: CHAT_LIGHT_BLUE_SOFT,
   },
   searchContainer: {
     flexDirection: "row",
@@ -799,15 +804,16 @@ const styles = StyleSheet.create({
   },
   conversationsListContent: {
     padding: driverTheme.spacing.sm,
+    paddingBottom: driverTheme.spacing.lg,
   },
   conversationItem: {
     flexDirection: "row",
     padding: driverTheme.spacing.md,
     marginBottom: driverTheme.spacing.sm,
-    backgroundColor: driverTheme.colors.background.paper,
+    backgroundColor: CHAT_LIGHT_BLUE,
     borderRadius: driverTheme.borderRadius.md,
     borderWidth: 1,
-    borderColor: driverTheme.colors.divider,
+    borderColor: CHAT_LIGHT_BLUE_BORDER,
   },
   avatarContainer: {
     marginRight: driverTheme.spacing.md,
@@ -876,13 +882,15 @@ const styles = StyleSheet.create({
   },
   chatContainer: {
     flex: 1,
+    backgroundColor: CHAT_LIGHT_BLUE,
   },
   messagesList: {
     flex: 1,
-    backgroundColor: driverTheme.colors.background.default,
+    backgroundColor: CHAT_LIGHT_BLUE,
   },
   messagesListContent: {
     padding: driverTheme.spacing.md,
+    paddingBottom: driverTheme.spacing.lg,
   },
   messageContainer: {
     marginBottom: driverTheme.spacing.md,
@@ -923,7 +931,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   messageBubbleLeft: {
-    backgroundColor: driverTheme.colors.grey[200],
+    backgroundColor: CHAT_LIGHT_BLUE_SOFT,
+    borderWidth: 1,
+    borderColor: CHAT_LIGHT_BLUE_BORDER,
   },
   messageBubbleRight: {
     backgroundColor: driverTheme.colors.primary.main,
@@ -957,9 +967,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: driverTheme.spacing.md,
     paddingVertical: driverTheme.spacing.sm,
-    backgroundColor: driverTheme.colors.background.paper,
+    backgroundColor: CHAT_LIGHT_BLUE,
     borderBottomWidth: 1,
-    borderBottomColor: driverTheme.colors.divider,
+    borderBottomColor: CHAT_LIGHT_BLUE_BORDER,
   },
   chatHeaderBackButton: {
     marginRight: driverTheme.spacing.sm,
@@ -1015,21 +1025,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: driverTheme.spacing.md,
-    backgroundColor: driverTheme.colors.background.paper,
+    backgroundColor: CHAT_LIGHT_BLUE,
     borderTopWidth: 1,
-    borderTopColor: driverTheme.colors.divider,
+    borderTopColor: CHAT_LIGHT_BLUE_BORDER,
   },
   messageInput: {
     flex: 1,
     maxHeight: 100,
     paddingVertical: driverTheme.spacing.sm,
     paddingHorizontal: driverTheme.spacing.md,
-    backgroundColor: driverTheme.colors.grey[100],
+    backgroundColor: CHAT_LIGHT_BLUE_SOFT,
     borderRadius: 24,
     fontSize: 16,
     color: driverTheme.colors.text.primary,
     marginRight: driverTheme.spacing.sm,
-    borderWidth: 0,
+    borderWidth: 1,
+    borderColor: CHAT_LIGHT_BLUE_BORDER,
   },
   sendButton: {
     width: 44,
@@ -1061,15 +1072,15 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: driverTheme.colors.background.default,
+    backgroundColor: CHAT_LIGHT_BLUE_SOFT,
   },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
     padding: driverTheme.spacing.md,
-    backgroundColor: driverTheme.colors.background.paper,
+    backgroundColor: CHAT_LIGHT_BLUE,
     borderBottomWidth: 1,
-    borderBottomColor: driverTheme.colors.divider,
+    borderBottomColor: CHAT_LIGHT_BLUE_BORDER,
   },
   modalBackButton: {
     marginRight: driverTheme.spacing.md,
@@ -1086,12 +1097,12 @@ const styles = StyleSheet.create({
   modalSearchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: driverTheme.colors.background.paper,
+    backgroundColor: CHAT_LIGHT_BLUE,
     margin: driverTheme.spacing.md,
     paddingHorizontal: driverTheme.spacing.md,
     borderRadius: driverTheme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: driverTheme.colors.divider,
+    borderColor: CHAT_LIGHT_BLUE_BORDER,
   },
   modalSearchInput: {
     flex: 1,
@@ -1109,13 +1120,13 @@ const styles = StyleSheet.create({
     padding: driverTheme.spacing.md,
     marginHorizontal: driverTheme.spacing.md,
     marginBottom: driverTheme.spacing.sm,
-    backgroundColor: driverTheme.colors.background.paper,
+    backgroundColor: CHAT_LIGHT_BLUE,
     borderRadius: driverTheme.borderRadius.md,
     borderWidth: 1,
-    borderColor: driverTheme.colors.divider,
+    borderColor: CHAT_LIGHT_BLUE_BORDER,
   },
   userItemSelected: {
-    backgroundColor: driverTheme.colors.primary.light,
+    backgroundColor: CHAT_LIGHT_BLUE_SOFT,
     borderColor: driverTheme.colors.primary.main,
   },
   userContent: {
@@ -1134,9 +1145,9 @@ const styles = StyleSheet.create({
   },
   modalFooter: {
     padding: driverTheme.spacing.md,
-    backgroundColor: driverTheme.colors.background.paper,
+    backgroundColor: CHAT_LIGHT_BLUE,
     borderTopWidth: 1,
-    borderTopColor: driverTheme.colors.divider,
+    borderTopColor: CHAT_LIGHT_BLUE_BORDER,
   },
   modalButton: {
     backgroundColor: driverTheme.colors.primary.main,
@@ -1188,12 +1199,14 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   typingBubble: {
-    backgroundColor: driverTheme.colors.background.paper,
+    backgroundColor: CHAT_LIGHT_BLUE_SOFT,
     padding: driverTheme.spacing.md,
     borderRadius: driverTheme.borderRadius.md,
     borderTopLeftRadius: 4,
     borderTopRightRadius: driverTheme.borderRadius.xl,
     maxWidth: "75%",
+    borderWidth: 1,
+    borderColor: CHAT_LIGHT_BLUE_BORDER,
   },
   typingText: {
     fontSize: 14,

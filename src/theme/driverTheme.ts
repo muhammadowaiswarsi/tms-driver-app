@@ -31,7 +31,7 @@ export const driverTheme = {
       contrastText: '#000000',
     },
     background: {
-      default: '#f5f5f5',
+      default: '#f0f7ff',
       paper: '#ffffff',
     },
     text: {
@@ -115,4 +115,3 @@ export const driverTheme = {
 };
 
 export type DriverTheme = typeof driverTheme;
-
