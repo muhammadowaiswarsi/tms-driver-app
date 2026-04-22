@@ -29,6 +29,128 @@ import { Event } from "../../src/types/driver.types";
 // Type assertion helper for Card component (React Native Elements types don't include children)
 const TypedCard = Card as any;
 
+const ORGANIZATION_DOCUMENT_OPTIONS = [
+  {
+    label: "Proof of Delivery",
+    type: "proofOfDelivery",
+    required: true,
+  },
+  {
+    label: "Bill of Lading",
+    type: "billOfLading",
+    required: true,
+  },
+  {
+    label: "Inspection Report",
+    type: "inspectionReport",
+    required: false,
+  },
+  {
+    label: "TIR Out",
+    type: "tirOut",
+    required: true,
+  },
+  {
+    label: "TIR In",
+    type: "tirIn",
+    required: true,
+  },
+];
+
+const normalizeDocumentType = (value: string) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+
+const parseOrganizationDocumentRequirements = (documentTypeValue: any) => {
+  if (!documentTypeValue) return [];
+
+  let rawItems: any[] = [];
+
+  if (Array.isArray(documentTypeValue)) {
+    rawItems = documentTypeValue;
+  } else if (typeof documentTypeValue === "string") {
+    const trimmedValue = documentTypeValue.trim();
+
+    try {
+      const parsedValue = JSON.parse(trimmedValue);
+
+      if (Array.isArray(parsedValue)) {
+        rawItems = parsedValue;
+      } else if (Array.isArray(parsedValue?.documents)) {
+        rawItems = parsedValue.documents;
+      } else if (
+        parsedValue?.type ||
+        parsedValue?.label ||
+        parsedValue?.value
+      ) {
+        rawItems = [parsedValue];
+      }
+    } catch {
+      rawItems = trimmedValue
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+  } else if (Array.isArray(documentTypeValue?.documents)) {
+    rawItems = documentTypeValue.documents;
+  } else if (
+    documentTypeValue?.type ||
+    documentTypeValue?.label ||
+    documentTypeValue?.value
+  ) {
+    rawItems = [documentTypeValue];
+  }
+
+  return rawItems
+    .map((item) => {
+      if (item?.type || item?.label || item?.value) {
+        const normalizedType = normalizeDocumentType(
+          item?.type || item?.value || item?.label,
+        );
+
+        const matchedOption = ORGANIZATION_DOCUMENT_OPTIONS.find((option) => {
+          const optionType = normalizeDocumentType(option.type);
+          const optionLabel = normalizeDocumentType(option.label);
+          return (
+            normalizedType === optionType || normalizedType === optionLabel
+          );
+        });
+
+        if (matchedOption) {
+          return {
+            ...matchedOption,
+            label: item?.label || matchedOption.label,
+            required:
+              typeof item?.required === "boolean"
+                ? item.required
+                : matchedOption.required,
+          };
+        }
+
+        return {
+          label: item?.label || item?.type || item?.value,
+          type: item?.type || item?.value,
+          required: Boolean(item?.required),
+        };
+      }
+
+      const normalizedType = normalizeDocumentType(
+        typeof item === "string"
+          ? item
+          : item?.type || item?.value || item?.label,
+      );
+
+      return ORGANIZATION_DOCUMENT_OPTIONS.find((option) => {
+        const optionType = normalizeDocumentType(option.type);
+        const optionLabel = normalizeDocumentType(option.label);
+        return normalizedType === optionType || normalizedType === optionLabel;
+      });
+    })
+    .filter(Boolean);
+};
+
 const LoadSearch: React.FC = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -100,7 +222,7 @@ const LoadSearch: React.FC = () => {
       onError: (error: any) => {
         Alert.alert("Error", "Error starting load routing move");
       },
-    }
+    },
   );
 
   const updateEventStatus = useDriverLoadLocationStatus(
@@ -116,7 +238,7 @@ const LoadSearch: React.FC = () => {
         setIsUpdating(false);
         Alert.alert("Error", "Error updating status");
       },
-    }
+    },
   );
 
   const updateLoadStatus = useUpdateDriverLoadReturnInfo(
@@ -136,20 +258,21 @@ const LoadSearch: React.FC = () => {
         setIsCompleting(false);
         Alert.alert("Error", "Error completing load");
       },
-    }
+    },
   );
 
   const getAllEvents = () => {
     if (!driverActiveLoads?.data?.routing?.[0]?.events) return [];
     return driverActiveLoads.data.routing[0].events.sort(
-      (a: Event, b: Event) => a.sequence - b.sequence
+      (a: Event, b: Event) => a.sequence - b.sequence,
     );
   };
 
   const getCurrentEventIndex = () => {
     const events = getAllEvents();
     const currentIndex = events.findIndex(
-      (event: Event) => event.status === "PENDING" || event.status === "ARRIVED"
+      (event: Event) =>
+        event.status === "PENDING" || event.status === "ARRIVED",
     );
     return currentIndex !== -1 ? currentIndex : events.length - 1;
   };
@@ -194,7 +317,7 @@ const LoadSearch: React.FC = () => {
 
   const handleEventAction = (
     eventId: string,
-    action: "departed" | "arrived" | "complete"
+    action: "departed" | "arrived" | "complete",
   ) => {
     setSelectedEventId(eventId);
     setActionType(action);
@@ -240,40 +363,69 @@ const LoadSearch: React.FC = () => {
     return typeMap[localType] || localType.toUpperCase();
   };
 
-  const requiredDocuments = [
-    {
-      id: "1",
-      name: "Proof of Delivery",
-      type: "proofOfDelivery",
-      required: true,
-      uploaded: false,
-      uploadData: null,
-    },
-    {
-      id: "2",
-      name: "TIR Out",
-      type: "tirOut",
-      required: true,
-      uploaded: false,
-      uploadData: null,
-    },
-    {
-      id: "3",
-      name: "TIR In",
-      type: "tirIn",
-      required: true,
-      uploaded: false,
-      uploadData: null,
-    },
-  ];
-
   useEffect(() => {
     if (driverActiveLoads?.data) {
-      setDocuments(requiredDocuments.map((doc) => ({ ...doc })));
+      const customerDocumentRequirements =
+        parseOrganizationDocumentRequirements(
+          driverActiveLoads?.data?.customer?.documentType,
+        );
+      const apiDocumentRequirements =
+        driverActiveLoads?.data?.documentRequirements?.documents;
+
+      const fallbackDocuments = ORGANIZATION_DOCUMENT_OPTIONS.map(
+        (doc, index) => ({
+          id: String(index + 1),
+          name: doc.label,
+          type: doc.type,
+          required: Boolean(doc.required),
+          uploaded: false,
+          uploadData: null,
+        }),
+      );
+
+      const nextDocuments =
+        customerDocumentRequirements.length > 0
+          ? customerDocumentRequirements.map((doc, index) => ({
+              id: String(index + 1),
+              name: doc.label,
+              type: doc.type,
+              required: Boolean(doc.required),
+              uploaded: false,
+              uploadData: null,
+            }))
+          : Array.isArray(apiDocumentRequirements) &&
+              apiDocumentRequirements.length > 0
+            ? apiDocumentRequirements.map((doc: any, index: number) => ({
+                id: String(index + 1),
+                name: doc.label,
+                type: doc.type,
+                required: Boolean(doc.required),
+                uploaded: false,
+                uploadData: null,
+              }))
+            : fallbackDocuments;
+
+      setDocuments((prev) =>
+        nextDocuments.map((doc) => {
+          const existingDoc = prev.find(
+            (item) =>
+              normalizeDocumentType(item.type) ===
+              normalizeDocumentType(doc.type),
+          );
+
+          return existingDoc
+            ? {
+                ...doc,
+                uploaded: existingDoc.uploaded,
+                uploadedAt: existingDoc.uploadedAt,
+                uploadData: existingDoc.uploadData,
+              }
+            : doc;
+        }),
+      );
       setChassisNumber(driverActiveLoads.data.chassis?.chassisNumber || "");
       setContainerNumber(driverActiveLoads.data.containerNumber || "");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [driverActiveLoads]);
 
   useEffect(() => {
@@ -337,7 +489,7 @@ const LoadSearch: React.FC = () => {
       } catch (importError) {
         Alert.alert(
           "Error",
-          "expo-document-picker is not installed. Please run: npm install expo-document-picker"
+          "expo-document-picker is not installed. Please run: npm install expo-document-picker",
         );
         return;
       }
@@ -382,7 +534,7 @@ const LoadSearch: React.FC = () => {
           headers: {
             "Content-Type": "multipart/form-data",
           },
-        }
+        },
       );
 
       if (uploadResponse.data.success && uploadResponse.data.data) {
@@ -399,8 +551,8 @@ const LoadSearch: React.FC = () => {
                   uploadedAt: new Date(),
                   uploadData: uploadData,
                 }
-              : d
-          )
+              : d,
+          ),
         );
 
         // Alert.alert('Success', 'Document uploaded successfully');
@@ -528,11 +680,11 @@ const LoadSearch: React.FC = () => {
               })
               .map((event: Event, eventIndex: number) => {
                 const originalEventIndex = events.findIndex(
-                  (e: Event) => e.id === event.id
+                  (e: Event) => e.id === event.id,
                 );
                 const buttonStates = getEventButtonStates(
                   event,
-                  originalEventIndex
+                  originalEventIndex,
                 );
                 console.log(buttonStates, "buttonStates");
                 const isCurrentEvent = originalEventIndex === currentEventIndex;
@@ -1004,10 +1156,8 @@ const LoadSearch: React.FC = () => {
                 />
               </View>
 
-              {/* Required Documents */}
-              <Text style={styles.documentSectionTitle}>
-                Required Documents
-              </Text>
+              {/* Documents */}
+              <Text style={styles.documentSectionTitle}>Documents</Text>
               <View style={styles.documentsList}>
                 {documents.map((doc) => (
                   <View
@@ -1017,7 +1167,9 @@ const LoadSearch: React.FC = () => {
                       {
                         borderColor: doc.uploaded
                           ? driverTheme.colors.success.main
-                          : driverTheme.colors.error.main,
+                          : doc.required
+                            ? driverTheme.colors.error.main
+                            : driverTheme.colors.success.main,
                         borderWidth: 1,
                       },
                     ]}
@@ -1036,16 +1188,20 @@ const LoadSearch: React.FC = () => {
                         />
                         <Text style={styles.documentItemName}>{doc.name}</Text>
                       </View>
-                      {doc.required && !doc.uploaded && (
-                        <View
-                          style={[
-                            styles.requiredChip,
-                            { backgroundColor: driverTheme.colors.error.main },
-                          ]}
-                        >
-                          <Text style={styles.requiredChipText}>Required</Text>
-                        </View>
-                      )}
+                      <View
+                        style={[
+                          styles.requiredChip,
+                          {
+                            backgroundColor: doc.required
+                              ? driverTheme.colors.error.main
+                              : driverTheme.colors.success.main,
+                          },
+                        ]}
+                      >
+                        <Text style={styles.requiredChipText}>
+                          {doc.required ? "Required" : "Optional"}
+                        </Text>
+                      </View>
                     </View>
                     {!doc.uploaded && (
                       <Button
@@ -1165,13 +1321,29 @@ const LoadSearch: React.FC = () => {
               .filter((doc) => doc.uploaded)
               .map((doc) => (
                 <View key={doc.id} style={styles.completeDocumentItem}>
-                  <Icon
-                    name="check-circle"
-                    type="material"
-                    size={16}
-                    color={driverTheme.colors.success.main}
-                  />
-                  <Text style={styles.completeDocumentName}>{doc.name}</Text>
+                  <View style={styles.completeDocumentLeft}>
+                    <Icon
+                      name="check-circle"
+                      type="material"
+                      size={16}
+                      color={driverTheme.colors.success.main}
+                    />
+                    <Text style={styles.completeDocumentName}>{doc.name}</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.requiredChip,
+                      {
+                        backgroundColor: doc.required
+                          ? driverTheme.colors.error.main
+                          : driverTheme.colors.success.main,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.requiredChipText}>
+                      {doc.required ? "Required" : "Optional"}
+                    </Text>
+                  </View>
                 </View>
               ))}
             <View style={styles.dialogButtons}>
@@ -1457,9 +1629,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     width: "90%",
     maxWidth: 400,
-    maxHeight: "85%",
+    height: "85%",
     backgroundColor: driverTheme.colors.background.paper,
-    padding: driverTheme.spacing.lg,
+    paddingTop: driverTheme.spacing.lg,
+    paddingHorizontal: driverTheme.spacing.lg,
+    paddingBottom: driverTheme.spacing.lg,
   },
   documentDialogHeader: {
     flexDirection: "row",
@@ -1470,10 +1644,11 @@ const styles = StyleSheet.create({
     marginLeft: driverTheme.spacing.sm,
   },
   documentDialogScroll: {
-    maxHeight: "100%",
+    flex: 1,
   },
   documentDialogScrollContent: {
     paddingBottom: driverTheme.spacing.md,
+    flexGrow: 1,
   },
   documentField: {
     marginBottom: driverTheme.spacing.md,
@@ -1561,11 +1736,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     marginBottom: driverTheme.spacing.md,
-    marginTop: driverTheme.spacing.sm,
     color: driverTheme.colors.text.primary,
   },
   documentsList: {
-    maxHeight: 300,
     marginBottom: driverTheme.spacing.lg,
   },
   documentItem: {
@@ -1673,11 +1846,18 @@ const styles = StyleSheet.create({
   completeDocumentItem: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: driverTheme.spacing.xs,
+  },
+  completeDocumentLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
   },
   completeDocumentName: {
     fontSize: 14,
     marginLeft: driverTheme.spacing.xs,
+    marginRight: driverTheme.spacing.sm,
     color: driverTheme.colors.text.primary,
   },
 });
