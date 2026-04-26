@@ -13,6 +13,14 @@ import {
 import { Button, Card, Icon, Input } from "react-native-elements";
 import DriverLayout from "../../src/components/common/DriverLayout";
 import CustomMapView from "../../src/components/common/MapView";
+import {
+  ESignScreen,
+  createDefaultPodEsignValues,
+  type PodEsignFormValues,
+  normalizeSignatureDataUrl,
+  toApiDateYmd,
+  toApiTime24h,
+} from "../../src/components/pod";
 import { useAuth } from "../../src/hooks/useAuth";
 import {
   useChassis,
@@ -62,6 +70,16 @@ const normalizeDocumentType = (value: string) =>
     .trim()
     .toLowerCase()
     .replace(/[\s-]+/g, "_");
+
+/** POD row hidden on the upload list for now (signature flow covers POD). */
+const isProofOfDeliveryDoc = (doc: { type?: string }) => {
+  const t = normalizeDocumentType(String(doc?.type || ""));
+  return (
+    t === "proof_of_delivery" ||
+    t === "proof_of_delivery_document" ||
+    t === "proofofdelivery"
+  );
+};
 
 const parseOrganizationDocumentRequirements = (documentTypeValue: any) => {
   if (!documentTypeValue) return [];
@@ -159,6 +177,14 @@ const LoadSearch: React.FC = () => {
     return params.tab === "upcoming" ? 1 : 0;
   });
   const [confirmDialog, setConfirmDialog] = useState(false);
+  const [podSignPromptDialog, setPodSignPromptDialog] = useState(false);
+  const [hasPodSignature, setHasPodSignature] = useState(false);
+  const [podEsignDialog, setPodEsignDialog] = useState(false);
+  const [podEsignData, setPodEsignData] = useState<PodEsignFormValues>(() =>
+    createDefaultPodEsignValues(),
+  );
+  const [esignInitialSnapshot, setEsignInitialSnapshot] =
+    useState<PodEsignFormValues>(() => createDefaultPodEsignValues());
   const [documentDialog, setDocumentDialog] = useState(false);
   const [completeDialog, setCompleteDialog] = useState(false);
   const [startLoadDialog, setStartLoadDialog] = useState(false);
@@ -248,6 +274,11 @@ const LoadSearch: React.FC = () => {
         refetchActive();
         setCompleteDialog(false);
         setDocumentDialog(false);
+        setPodSignPromptDialog(false);
+        setPodEsignDialog(false);
+        setHasPodSignature(false);
+        setPodEsignData(createDefaultPodEsignValues());
+        setEsignInitialSnapshot(createDefaultPodEsignValues());
         setIsCompleting(false);
         // Alert.alert('Success', 'Load completed successfully');
         setTimeout(() => {
@@ -323,10 +354,37 @@ const LoadSearch: React.FC = () => {
     setActionType(action);
 
     if (action === "complete") {
-      setDocumentDialog(true);
+      setHasPodSignature(false);
+      setPodSignPromptDialog(true);
     } else {
       setConfirmDialog(true);
     }
+  };
+
+  const handlePodSignSkip = () => {
+    setPodSignPromptDialog(false);
+    setDocumentDialog(true);
+  };
+
+  const openPodEsign = () => {
+    setEsignInitialSnapshot(
+      hasPodSignature ? { ...podEsignData } : createDefaultPodEsignValues(),
+    );
+    setPodSignPromptDialog(false);
+    setPodEsignDialog(true);
+  };
+
+  const handlePodEsignBack = () => {
+    setPodEsignDialog(false);
+    setPodSignPromptDialog(true);
+  };
+
+  const handlePodEsignApply = (values: PodEsignFormValues) => {
+    setPodEsignData(values);
+    setHasPodSignature(true);
+    setPodEsignDialog(false);
+    setPodSignPromptDialog(false);
+    setDocumentDialog(true);
   };
 
   const handleConfirmEventUpdate = async () => {
@@ -387,9 +445,9 @@ const LoadSearch: React.FC = () => {
         customerDocumentRequirements.length > 0
           ? customerDocumentRequirements.map((doc, index) => ({
               id: String(index + 1),
-              name: doc.label,
-              type: doc.type,
-              required: Boolean(doc.required),
+              name: doc?.label ?? "",
+              type: doc?.type ?? "",
+              required: Boolean(doc?.required),
               uploaded: false,
               uploadData: null,
             }))
@@ -471,7 +529,7 @@ const LoadSearch: React.FC = () => {
   };
 
   const allRequiredDocsUploaded = documents
-    .filter((doc) => doc.required)
+    .filter((doc) => doc.required && !isProofOfDeliveryDoc(doc))
     .every((doc) => doc.uploaded);
 
   const handleCompleteLoad = () => {
@@ -574,16 +632,53 @@ const LoadSearch: React.FC = () => {
   };
 
   const handleConfirmComplete = async () => {
+    const chassis = chassisNumber.trim();
+    if (!chassis) {
+      Alert.alert("Required", "Chassis number is required.");
+      return;
+    }
+
+    const rawSig = podEsignData.signatureDataUrl?.trim() ?? "";
+    if (!rawSig) {
+      Alert.alert(
+        "Required",
+        "Signature is required. Use Sign Proof of Delivery, then E-Sign, before completing the load.",
+      );
+      return;
+    }
+
     setIsCompleting(true);
     try {
-      const payload: any = {
-        chassisNumber,
-        containerNumber,
+      const podSubmission: Record<string, string> = {
+        signatureDataUrl: normalizeSignatureDataUrl(rawSig),
       };
+      if (podEsignData.printName?.trim()) {
+        podSubmission.receiverName = podEsignData.printName.trim();
+      }
+      if (podEsignData.date?.trim()) {
+        podSubmission.date = toApiDateYmd(podEsignData.date);
+      }
+      if (podEsignData.timeIn?.trim()) {
+        podSubmission.timeIn = toApiTime24h(podEsignData.timeIn);
+      }
+      if (podEsignData.timeOut?.trim()) {
+        podSubmission.timeOut = toApiTime24h(podEsignData.timeOut);
+      }
+
+      const payload: Record<string, unknown> = {
+        chassisNumber: chassis,
+        podSubmission,
+      };
+      if (containerNumber.trim()) {
+        payload.containerNumber = containerNumber.trim();
+      }
 
       documents.forEach((doc) => {
+        if (isProofOfDeliveryDoc(doc)) {
+          return;
+        }
         if (doc.uploaded && doc.uploadData) {
-          payload[doc.type] = {
+          (payload as Record<string, unknown>)[doc.type] = {
             key: doc.uploadData.key,
             url: doc.uploadData.url,
             originalName: doc.uploadData.originalName,
@@ -1031,6 +1126,93 @@ const LoadSearch: React.FC = () => {
         </View>
       )}
 
+      {/* Sign Proof of Delivery — opens before Complete Load (documents) */}
+      {podSignPromptDialog && (
+        <View style={styles.dialogOverlay}>
+          <View style={styles.podSignCard}>
+            <Icon
+              name="warning"
+              type="material"
+              size={34}
+              color={driverTheme.colors.grey[500]}
+              containerStyle={styles.podSignIconWrap}
+            />
+            <Text style={styles.podSignHeading}>Sign Proof of Delivery</Text>
+
+            <View
+              style={[
+                styles.podSignRequirement,
+                hasPodSignature && styles.podSignRequirementDone,
+              ]}
+            >
+              <View style={styles.podSignRequirementLeft}>
+                <Icon
+                  name={hasPodSignature ? "check-circle" : "description"}
+                  type="material"
+                  color={
+                    hasPodSignature
+                      ? driverTheme.colors.success.main
+                      : driverTheme.colors.grey[600]
+                  }
+                  size={22}
+                />
+                <View style={styles.podSignRequirementText}>
+                  <Text
+                    style={[
+                      styles.podSignStatus,
+                      hasPodSignature && styles.podSignStatusDone,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {hasPodSignature
+                      ? "Signature Captured"
+                      : "Missing Signature"}
+                  </Text>
+                  <Text style={styles.podSignDocName} numberOfLines={2}>
+                    Proof of Delivery
+                  </Text>
+                </View>
+              </View>
+              <Button
+                title={hasPodSignature ? "Edit" : "Sign"}
+                onPress={openPodEsign}
+                buttonStyle={styles.podSignActionButton}
+                titleStyle={styles.podSignActionButtonTitle}
+                icon={
+                  <Icon
+                    name="edit"
+                    type="material"
+                    color="#fff"
+                    size={15}
+                    containerStyle={styles.podSignActionIcon}
+                  />
+                }
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.podSignSkipButton}
+              onPress={handlePodSignSkip}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.podSignSkipText}>Skip</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* E-Sign: signature + print name + date / times */}
+      {podEsignDialog && (
+        <View style={styles.dialogOverlay}>
+          <ESignScreen
+            visible={podEsignDialog}
+            initialValues={esignInitialSnapshot}
+            onBack={handlePodEsignBack}
+            onApply={handlePodEsignApply}
+          />
+        </View>
+      )}
+
       {/* Document Upload Dialog */}
       {documentDialog && (
         <View style={styles.dialogOverlay}>
@@ -1156,10 +1338,12 @@ const LoadSearch: React.FC = () => {
                 />
               </View>
 
-              {/* Documents */}
+              {/* Documents (Proof of Delivery upload row off for now — e-sign) */}
               <Text style={styles.documentSectionTitle}>Documents</Text>
               <View>
-                {documents.map((doc) => (
+                {documents
+                  .filter((doc) => !isProofOfDeliveryDoc(doc))
+                  .map((doc) => (
                   <View
                     key={doc.id}
                     style={[
@@ -1318,7 +1502,9 @@ const LoadSearch: React.FC = () => {
             </View>
             <Text style={styles.documentsTitle}>Documents</Text>
             {documents
-              .filter((doc) => doc.uploaded)
+              .filter(
+                (doc) => doc.uploaded && !isProofOfDeliveryDoc(doc),
+              )
               .map((doc) => (
                 <View key={doc.id} style={styles.completeDocumentItem}>
                   <View style={styles.completeDocumentLeft}>
@@ -1856,6 +2042,97 @@ const styles = StyleSheet.create({
     marginLeft: driverTheme.spacing.xs,
     marginRight: driverTheme.spacing.sm,
     color: driverTheme.colors.text.primary,
+  },
+  podSignCard: {
+    width: "90%",
+    maxWidth: 400,
+    borderRadius: 16,
+    backgroundColor: driverTheme.colors.background.paper,
+    paddingHorizontal: driverTheme.spacing.lg,
+    paddingTop: driverTheme.spacing.lg,
+    paddingBottom: driverTheme.spacing.md,
+  },
+  podSignIconWrap: {
+    alignSelf: "center",
+    marginBottom: driverTheme.spacing.xs,
+  },
+  podSignHeading: {
+    textAlign: "center",
+    fontSize: 18,
+    fontWeight: "700",
+    color: driverTheme.colors.text.primary,
+    marginBottom: driverTheme.spacing.lg,
+  },
+  podSignRequirement: {
+    minHeight: 56,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#f5d8df",
+    backgroundColor: "#fff1f4",
+    paddingHorizontal: driverTheme.spacing.sm,
+    paddingVertical: driverTheme.spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: driverTheme.spacing.sm,
+  },
+  podSignRequirementDone: {
+    borderColor: "#cfe8d2",
+    backgroundColor: "#f0fbf2",
+  },
+  podSignRequirementLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    minWidth: 0,
+  },
+  podSignRequirementText: {
+    flex: 1,
+    marginLeft: driverTheme.spacing.sm,
+    minWidth: 0,
+  },
+  podSignStatus: {
+    color: "#9e4d5e",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  podSignStatusDone: {
+    color: driverTheme.colors.success.dark,
+  },
+  podSignDocName: {
+    marginTop: 2,
+    color: driverTheme.colors.text.secondary,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  podSignActionButton: {
+    minWidth: 82,
+    borderRadius: 8,
+    backgroundColor: driverTheme.colors.primary.main,
+    paddingHorizontal: driverTheme.spacing.sm,
+    paddingVertical: 8,
+  },
+  podSignActionButtonTitle: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  podSignActionIcon: {
+    marginRight: 4,
+  },
+  podSignSkipButton: {
+    marginTop: driverTheme.spacing.xl,
+    width: "100%",
+    minHeight: 48,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: driverTheme.colors.grey[200],
+  },
+  podSignSkipText: {
+    color: driverTheme.colors.text.secondary,
+    fontSize: 16,
+    fontWeight: "700",
   },
 });
 
