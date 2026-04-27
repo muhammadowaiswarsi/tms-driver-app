@@ -1482,6 +1482,25 @@ const LoadSearch: React.FC = () => {
       {completeDialog && (
         <View style={styles.dialogOverlay}>
           <TypedCard containerStyle={styles.dialogCard}>
+            <View style={styles.completeDialogHeader}>
+              <TouchableOpacity
+                onPress={() => setCompleteDialog(false)}
+                disabled={isCompleting}
+                style={[
+                  styles.closeButton,
+                  isCompleting && styles.closeButtonDisabled,
+                ]}
+                accessibilityLabel="Close"
+                hitSlop={8}
+              >
+                <Icon
+                  name="close"
+                  type="material"
+                  color={driverTheme.colors.text.primary}
+                  size={24}
+                />
+              </TouchableOpacity>
+            </View>
             <Icon
               name="check-circle"
               type="material"
@@ -1792,6 +1811,16 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     width: "90%",
     maxWidth: 400,
+  },
+  completeDialogHeader: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    width: "100%",
+    marginBottom: driverTheme.spacing.xs,
+  },
+  closeButtonDisabled: {
+    opacity: 0.4,
   },
   dialogTitle: {
     fontSize: 18,
