@@ -3,8 +3,11 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   StyleSheet,
@@ -27,6 +30,12 @@ import {
 import { useWebSocketMessaging } from "../../src/hooks/useWebSocketMessaging";
 import { queryKeys } from "../../src/lib/react-query";
 import { driverTheme } from "../../src/theme/driverTheme";
+import {
+  buildAttachmentPayload,
+  canSendChatMessage,
+  getAttachmentDisplayUrl,
+  uploadChatAttachment,
+} from "../../src/utils/chatAttachments";
 
 interface Conversation {
   id: string | number;
@@ -44,7 +53,19 @@ interface Message {
   content: string;
   sentAt: string;
   isFromMe: boolean;
+  type?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  attachmentMimeType?: string;
 }
+
+type PendingAttachment = {
+  originalName: string;
+  type: string;
+  attachmentUrl: string;
+  attachmentName: string;
+  attachmentMimeType: string;
+};
 
 interface User {
   id: string | number;
@@ -66,6 +87,8 @@ const Messages: React.FC = () => {
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
+  const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<FlatList>(null);
   const { authState } = useAuth();
@@ -225,6 +248,7 @@ const Messages: React.FC = () => {
       refetchMessages();
       refetchConversations();
       setMessage("");
+      setPendingAttachment(null);
     },
   });
 
@@ -296,24 +320,60 @@ const Messages: React.FC = () => {
     setSelectedConversation(conversation);
   };
 
+  const clearPendingAttachment = () => {
+    setPendingAttachment(null);
+  };
+
+  const handlePickAttachment = async () => {
+    try {
+      const documentPicker = await import("expo-document-picker");
+      const result = await documentPicker.getDocumentAsync({
+        type: ["image/*", "application/pdf"],
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const file = result.assets[0];
+      setIsUploadingAttachment(true);
+
+      const uploaded = await uploadChatAttachment({
+        uri: file.uri,
+        name: file.name,
+        mimeType: file.mimeType,
+      });
+
+      setPendingAttachment({
+        originalName: uploaded.originalName,
+        ...buildAttachmentPayload(uploaded),
+      });
+    } catch (error) {
+      console.error("Attachment upload failed:", error);
+      Alert.alert("Upload failed", "Could not upload attachment. Please try again.");
+      clearPendingAttachment();
+    } finally {
+      setIsUploadingAttachment(false);
+    }
+  };
+
   const handleSendMessage = () => {
-    if (message.trim() && selectedConversation) {
-      // Use WebSocket if connected, otherwise fallback to REST API
-      if (isConnected) {
-        sendWebSocketMessage({
-          conversationId: selectedConversation.id,
-          content: message.trim(),
-          type: "TEXT",
-        });
-        setMessage("");
-      } else {
-        // Fallback to REST API only if WebSocket is not connected
-        sendMessageMutation.mutate({
-          conversationId: selectedConversation.id,
-          content: message.trim(),
-          type: "TEXT",
-        });
-      }
+    if (!canSendChatMessage(message, Boolean(pendingAttachment)) || !selectedConversation) return;
+
+    const payload = {
+      conversationId: selectedConversation.id,
+      content: message.trim(),
+      type: pendingAttachment?.type || "TEXT",
+      attachmentUrl: pendingAttachment?.attachmentUrl,
+      attachmentName: pendingAttachment?.attachmentName,
+      attachmentMimeType: pendingAttachment?.attachmentMimeType,
+    };
+
+    if (isConnected) {
+      sendWebSocketMessage(payload);
+      setMessage("");
+      clearPendingAttachment();
+    } else {
+      sendMessageMutation.mutate(payload);
     }
   };
 
@@ -436,7 +496,13 @@ const Messages: React.FC = () => {
     </TouchableOpacity>
   );
 
-  const renderMessageItem = ({ item }: { item: Message }) => (
+  const renderMessageItem = ({ item }: { item: Message }) => {
+    const attachmentUrl = getAttachmentDisplayUrl(item);
+    const isImageAttachment =
+      item.type === "IMAGE" || item.attachmentMimeType?.startsWith("image/");
+    const hasText = Boolean(item.content?.trim());
+
+    return (
     <View
       style={[
         styles.messageContainer,
@@ -461,14 +527,37 @@ const Messages: React.FC = () => {
             item.isFromMe ? styles.messageBubbleRight : styles.messageBubbleLeft,
           ]}
         >
-          <Text
-            style={[
-              styles.messageText,
-              item.isFromMe ? styles.messageTextRight : styles.messageTextLeft,
-            ]}
-          >
-            {item.content}
-          </Text>
+          {attachmentUrl && isImageAttachment ? (
+            <TouchableOpacity onPress={() => Linking.openURL(attachmentUrl)}>
+              <Image
+                source={{ uri: attachmentUrl }}
+                style={styles.messageImage}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+          ) : null}
+          {attachmentUrl && !isImageAttachment ? (
+            <TouchableOpacity onPress={() => Linking.openURL(attachmentUrl)}>
+              <Text
+                style={[
+                  styles.messageAttachment,
+                  item.isFromMe ? styles.messageTextRight : styles.messageTextLeft,
+                ]}
+              >
+                📎 {item.attachmentName || "Open file"}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+          {hasText ? (
+            <Text
+              style={[
+                styles.messageText,
+                item.isFromMe ? styles.messageTextRight : styles.messageTextLeft,
+              ]}
+            >
+              {item.content}
+            </Text>
+          ) : null}
         </View>
         <Text
           style={[
@@ -481,6 +570,7 @@ const Messages: React.FC = () => {
       </View>
     </View>
   );
+  };
 
   const renderUserItem = ({ item }: { item: User }) => (
     <TouchableOpacity
@@ -742,6 +832,28 @@ const Messages: React.FC = () => {
 
             {/* Message Input */}
             <View style={styles.inputContainer}>
+              {pendingAttachment ? (
+                <View style={styles.pendingAttachmentChip}>
+                  <Text style={styles.pendingAttachmentText} numberOfLines={1}>
+                    {pendingAttachment.originalName}
+                  </Text>
+                  <TouchableOpacity onPress={clearPendingAttachment}>
+                    <Icon name="close" type="material" size={18} color={driverTheme.colors.text.secondary} />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+              <View style={styles.inputRow}>
+              <TouchableOpacity
+                style={styles.attachButton}
+                onPress={handlePickAttachment}
+                disabled={isUploadingAttachment}
+              >
+                {isUploadingAttachment ? (
+                  <ActivityIndicator size="small" color={driverTheme.colors.primary.main} />
+                ) : (
+                  <Icon name="attach-file" type="material" size={22} color={driverTheme.colors.primary.main} />
+                )}
+              </TouchableOpacity>
               <TextInput
                 style={styles.messageInput}
                 placeholder="Type a message..."
@@ -753,11 +865,11 @@ const Messages: React.FC = () => {
               <TouchableOpacity
                 style={[
                   styles.sendButton,
-                  (!message.trim() || sendMessageMutation.isPending) &&
+                  (!canSendChatMessage(message, Boolean(pendingAttachment)) || sendMessageMutation.isPending) &&
                     styles.sendButtonDisabled,
                 ]}
                 onPress={handleSendMessage}
-                disabled={!message.trim() || sendMessageMutation.isPending}
+                disabled={!canSendChatMessage(message, Boolean(pendingAttachment)) || sendMessageMutation.isPending}
               >
                 {sendMessageMutation.isPending ? (
                   <ActivityIndicator size="small" color="#fff" />
@@ -765,6 +877,7 @@ const Messages: React.FC = () => {
                   <Icon name="send" type="material" color="#fff" size={22} />
                 )}
               </TouchableOpacity>
+              </View>
             </View>
       </View>
         )}
@@ -1022,12 +1135,37 @@ const styles = StyleSheet.create({
     marginLeft: driverTheme.spacing.sm,
   },
   inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
     padding: driverTheme.spacing.md,
     backgroundColor: CHAT_LIGHT_BLUE,
     borderTopWidth: 1,
     borderTopColor: CHAT_LIGHT_BLUE_BORDER,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  attachButton: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: driverTheme.spacing.xs,
+  },
+  pendingAttachmentChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: driverTheme.colors.background.paper,
+    borderRadius: 16,
+    paddingHorizontal: driverTheme.spacing.md,
+    paddingVertical: driverTheme.spacing.xs,
+    marginBottom: driverTheme.spacing.sm,
+  },
+  pendingAttachmentText: {
+    flex: 1,
+    marginRight: driverTheme.spacing.sm,
+    color: driverTheme.colors.text.primary,
+    fontSize: 13,
   },
   messageInput: {
     flex: 1,
@@ -1041,6 +1179,17 @@ const styles = StyleSheet.create({
     marginRight: driverTheme.spacing.sm,
     borderWidth: 1,
     borderColor: CHAT_LIGHT_BLUE_BORDER,
+  },
+  messageImage: {
+    width: 220,
+    height: 160,
+    borderRadius: 12,
+    marginBottom: 6,
+  },
+  messageAttachment: {
+    fontSize: 14,
+    textDecorationLine: "underline",
+    marginBottom: 4,
   },
   sendButton: {
     width: 44,

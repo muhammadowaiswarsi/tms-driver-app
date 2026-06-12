@@ -194,7 +194,15 @@ export const useWebSocketMessaging = (options: UseWebSocketMessagingOptions = {}
   }, [isConnected]);
 
   // Send a message via WebSocket
-  const sendMessage = useCallback((data: { conversationId: string | number; content: string; type?: string }) => {
+  const sendMessage = useCallback((data: {
+    conversationId: string | number;
+    content: string;
+    type?: string;
+    attachmentUrl?: string;
+    attachmentName?: string;
+    attachmentMimeType?: string;
+    replyToMessageId?: string;
+  }) => {
     if (!socketRef.current || !isConnected) {
       return;
     }
@@ -203,6 +211,10 @@ export const useWebSocketMessaging = (options: UseWebSocketMessagingOptions = {}
       conversationId: data.conversationId,
       content: data.content,
       type: data.type || 'TEXT',
+      attachmentUrl: data.attachmentUrl,
+      attachmentName: data.attachmentName,
+      attachmentMimeType: data.attachmentMimeType,
+      replyToMessageId: data.replyToMessageId,
     });
   }, [isConnected]);
 
