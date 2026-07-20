@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,7 +12,13 @@ import {
 } from "react-native";
 import { Button, Card, Icon, Input } from "react-native-elements";
 import DriverLayout from "../../src/components/common/DriverLayout";
-import CustomMapView from "../../src/components/common/MapView";
+import CustomMapView, {
+  type MapMarker,
+} from "../../src/components/common/MapView";
+import {
+  geocodeAddress,
+  markerTypeFromEventType,
+} from "../../src/utils/geocode";
 import {
   ESignScreen,
   createDefaultPodEsignValues,
@@ -220,6 +226,94 @@ const LoadSearch: React.FC = () => {
   } = useDriverActiveLoads();
 
   const loadId = driverActiveLoads?.data?.id;
+  const [currentLocation, setCurrentLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
+
+  const activeEventsKey = useMemo(() => {
+    const events = driverActiveLoads?.data?.routing?.[0]?.events || [];
+    return events
+      .map((e: Event) => `${e.id}:${e.type}:${e.location || ""}`)
+      .join("|");
+  }, [driverActiveLoads?.data?.routing]);
+
+  // Live GPS for "you are here" marker
+  useEffect(() => {
+    let cancelled = false;
+
+    const readGps = async () => {
+      try {
+        const Location = await import("expo-location");
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") return;
+        const pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        if (cancelled) return;
+        setCurrentLocation({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        });
+      } catch {
+        // ignore — map still shows pickup/delivery if geocoded
+      }
+    };
+
+    readGps();
+    const timer = setInterval(readGps, 20000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
+
+  // Geocode event addresses → pickup / delivery / stop markers
+  useEffect(() => {
+    let cancelled = false;
+    const events = (driverActiveLoads?.data?.routing?.[0]?.events ||
+      []) as Event[];
+
+    const run = async () => {
+      if (!events.length) {
+        if (!cancelled) setMapMarkers([]);
+        return;
+      }
+
+      const sorted = [...events].sort(
+        (a, b) => (a.sequence || 0) - (b.sequence || 0),
+      );
+      const seen = new Set<string>();
+      const next: MapMarker[] = [];
+
+      for (const event of sorted) {
+        const address = (event.location || "").trim();
+        if (!address) continue;
+        const dedupeKey = address.toLowerCase();
+        if (seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
+
+        const point = await geocodeAddress(address);
+        if (!point || cancelled) continue;
+
+        const type = markerTypeFromEventType(event.type);
+        next.push({
+          latitude: point.latitude,
+          longitude: point.longitude,
+          title: `${(event.type || "Stop").replace(/_/g, " ")} — ${address}`,
+          type,
+        });
+      }
+
+      if (!cancelled) setMapMarkers(next);
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeEventsKey, driverActiveLoads?.data?.id]);
 
   // Chassis data - will be used when implementing chassis picker
   // const { authState } = useAuth();
@@ -723,8 +817,13 @@ const LoadSearch: React.FC = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Map View */}
-        <CustomMapView height={300} />
+        {/* Map View — pickup / delivery / live driver */}
+        <CustomMapView
+          height={300}
+          markers={mapMarkers}
+          currentLocation={currentLocation}
+          showRoute
+        />
 
         {/* Events List */}
         <View style={styles.eventsContainer}>
