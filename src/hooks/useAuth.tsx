@@ -10,6 +10,7 @@ import React, {
 import AuthService from '../services/AuthService';
 import { customAxios, setAuthToken, setRefreshTokenCallback } from '../services/api';
 import { setupPushTokenAndSync } from '../services/pushToken';
+import { stopDriverTracking } from '../services/TrackingService';
 
 interface User {
   username?: string;
@@ -179,6 +180,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = useCallback(async () => {
     setError(null);
     try {
+      await stopDriverTracking().catch(() => {});
       await AuthService.logout();
       setAuthState(null);
       setTokens(null);

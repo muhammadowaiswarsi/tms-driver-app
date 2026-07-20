@@ -315,9 +315,9 @@ const LoadSearch: React.FC = () => {
     const showCompleted = isCompleteType;
     const completedEnabled = isCurrentEvent && isCompleteType;
     const arrivedEnabled = isCurrentEvent && event.status === "PENDING";
-    console.log(event.status);
+    // console.log(event.status);
     const departedEnabled = isCurrentEvent && event.status === "ARRIVED";
-    console.log("departedEnabled", departedEnabled);
+    // console.log("departedEnabled", departedEnabled);
 
     // Check if buttons should be green (active/enabled state)
     // Arrived: Green only when enabled (PENDING status and current event) - gray when disabled (ARRIVED/DEPARTED)

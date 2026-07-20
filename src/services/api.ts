@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { appConfig } from '../utils/appConfig';
 
 interface FailedQueueItem {
@@ -55,8 +56,15 @@ const processQueue = (error: any, token: string | null = null): void => {
 };
 
 customAxios.interceptors.request.use(
-  (config) => {
-    // Authorization header is set via setAuthToken from context
+  async (config) => {
+    if (!config.headers.Authorization) {
+      const token =
+        (await AsyncStorage.getItem('access_token')) ||
+        (await AsyncStorage.getItem('id_token'));
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
     return config;
   },
   (error: AxiosError) => {
