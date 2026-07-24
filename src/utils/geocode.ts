@@ -9,10 +9,7 @@ function normalizeQuery(query: string) {
   return query.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-/**
- * Geocode an address to lat/lng.
- * Prefers Mapbox when EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN is set; falls back to Nominatim.
- */
+
 export async function geocodeAddress(address?: string | null): Promise<GeocodedPoint | null> {
   const query = (address || '').trim();
   if (!query) return null;
@@ -38,14 +35,13 @@ export async function geocodeAddress(address?: string | null): Promise<GeocodedP
         }
       }
     } catch {
-      // fall through to Nominatim
     }
   }
 
   if (!point) {
     try {
       const url =
-        `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`;
       const res = await fetch(url, {
         headers: {
           Accept: 'application/json',

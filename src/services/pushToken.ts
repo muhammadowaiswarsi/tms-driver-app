@@ -40,14 +40,7 @@ async function registerFcmToken(fcmToken: string): Promise<void> {
   });
 }
 
-/**
- * Full setup:
- * - checks physical device (required)
- * - creates Android channel
- * - requests permissions
- * - obtains native device push token (FCM on Android)
- * - syncs token to backend
- */
+
 export async function setupPushTokenAndSync(): Promise<PushTokenResult> {
   try {
     const Device = await import("expo-device");
@@ -66,7 +59,6 @@ export async function setupPushTokenAndSync(): Promise<PushTokenResult> {
     }
 
     const token = await getDevicePushToken();
-    console.log("token", token);
     if (!token) {
       return { ok: false, reason: "Device push token empty" };
     }

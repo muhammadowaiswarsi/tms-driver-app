@@ -1,10 +1,10 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
-// Expo Go / JS-only shim for `@aws-amplify/react-native`
-// This module exists because Amplify's React Native entrypoints import
-// `@aws-amplify/react-native` from `*.native.ts` files, but Expo Go cannot use
-// Amplify's optional native implementations (Passkeys/WebBrowser/ModPow).
-//
-// Metro alias in `metro.config.js` points `@aws-amplify/react-native` to this file.
+
+
+
+
+
+
+
 
 import type { AsyncStorageStatic } from '@react-native-async-storage/async-storage';
 import { AppState, Platform } from 'react-native';
@@ -14,8 +14,8 @@ type NetInfoLike = {
 };
 
 export const loadAsyncStorage = (): AsyncStorageStatic => {
-	// `@react-native-async-storage/async-storage` must be installed.
-	// In Expo Go, it's available when installed as a dependency.
+	
+	
 	const mod = require('@react-native-async-storage/async-storage')?.default as AsyncStorageStatic | undefined;
 	if (!mod) {
 		throw new Error(
@@ -46,22 +46,22 @@ export const loadBuffer = () => {
 export const loadAppState = () => AppState;
 
 export const loadNetInfo = (): NetInfoLike => {
-	// We intentionally do NOT depend on `@react-native-community/netinfo` in Expo Go.
-	// If something in Amplify tries to use reachability, provide a safe stub.
+	
+	
 	return {
 		addEventListener: handler => {
 			try {
 				handler({ isInternetReachable: true });
 			} catch {
-				// ignore
+				
 			}
 			return () => {};
 		},
 	};
 };
 
-// Optional native helpers (Passkeys / WebBrowser / Push notifications)
-// Not available in Expo Go — if called, tell the developer to use a Dev Client.
+
+
 const notSupported = (feature: string) => () => {
 	throw new Error(
 		`${feature} is not available in Expo Go. Build a custom Dev Client (expo prebuild + pods) to use this feature.`,
@@ -76,7 +76,6 @@ export const getOperatingSystem = () => Platform.OS;
 export const getDeviceName = async () => 'unknown';
 export const getIsNativeError = (error: unknown) => error instanceof Error;
 
-// SRP acceleration (native big-int modPow). We avoid SRP in Expo Go by using USER_PASSWORD_AUTH.
 export const computeModPow = notSupported('SRP (computeModPow)');
 export const computeS = notSupported('SRP (computeS)');
 

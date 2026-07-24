@@ -13,7 +13,7 @@ interface Tokens {
   [key: string]: any;
 }
 
-// Get base URL from config
+
 const BASE_URL = appConfig.apiUrl;
 
 const customAxios: AxiosInstance = axios.create({
@@ -24,7 +24,7 @@ const customAxios: AxiosInstance = axios.create({
   },
 });
 
-// Function to set the Authorization header dynamically
+
 export const setAuthToken = (token: string | null): void => {
   if (token) {
     customAxios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -33,12 +33,10 @@ export const setAuthToken = (token: string | null): void => {
   }
 };
 
-// Flag to prevent multiple token refresh requests
 let isRefreshing = false;
 let failedQueue: FailedQueueItem[] = [];
 let refreshTokenCallback: (() => Promise<Tokens>) | null = null;
 
-// Set the refresh token callback
 export const setRefreshTokenCallback = (callback: () => Promise<Tokens>) => {
   refreshTokenCallback = callback;
 };
@@ -79,7 +77,6 @@ customAxios.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        // If already refreshing, queue this request
         return new Promise<string>((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
@@ -98,27 +95,19 @@ customAxios.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Try to refresh tokens - this will be handled by AuthService
-        // We'll use a callback pattern to avoid circular dependencies
-        // The refresh function should be set by the auth context
         if (refreshTokenCallback) {
           const tokens: Tokens = await refreshTokenCallback();
 
-          // Update the failed queue
           processQueue(null, tokens.accessToken);
 
-          // Retry the original request
           if (originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${tokens.accessToken}`;
           }
           return customAxios(originalRequest);
         }
       } catch (refreshError) {
-        // If refresh fails, logout user and redirect to login
         processQueue(refreshError, null);
 
-        // Redirect to login page - this will be handled by navigation
-        // For now, we'll just reject
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

@@ -1,196 +1,198 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { requireOptionalNativeModule } from 'expo-modules-core';
+import { AppState, type AppStateStatus } from 'react-native';
 import { customAxios } from './api';
-
-const SESSION_KEY = 'tracking_session_id';
-const QUEUE_KEY = 'tracking_ping_queue';
-
-/** Emulator/dev fallback near SF when native GPS module is not in the build yet. */
-const DEV_FALLBACK_COORDS = {
-  latitude: 37.7749,
-  longitude: -122.4194,
-  accuracyMeters: 50,
-  speedMph: 0,
-};
-
-type TrackingSession = {
-  trackingSessionId: string;
-  trackingMode: string;
-  pingIntervalSeconds: number;
-};
-
-type PingPayload = {
-  trackingSessionId: string;
-  timestamp: string;
-  latitude: number;
-  longitude: number;
-  accuracyMeters?: number;
-  speedMph?: number;
-  appState?: string;
-};
+import { DRIVER_LOCATION_TASK } from './backgroundLocationTask';
+import {
+  clearTrackingSession,
+  flushTrackingQueue,
+  getTrackingInterval,
+  getTrackingSessionId,
+  normalizePingInterval,
+  queueTrackingPing,
+  saveTrackingSession,
+  sendTrackingPing,
+  toTrackingPing,
+  type TrackingSession,
+} from './tracking.shared';
 
 let pingTimer: ReturnType<typeof setInterval> | null = null;
 let sessionPromise: Promise<TrackingSession> | null = null;
-let gpsUnavailableLogged = false;
+let pingInFlight = false;
+let appStateSub: { remove: () => void } | null = null;
+let backgroundIntervalSeconds: number | null = null;
 
-function hasNativeGpsModule(): boolean {
+function getAppState(): 'foreground' | 'background' {
+  const state: AppStateStatus = AppState.currentState;
+  return state === 'active' ? 'foreground' : 'background';
+}
+
+async function getForegroundLocation() {
+  const Location = await import('expo-location');
+  let permission = await Location.getForegroundPermissionsAsync();
+  if (permission.status !== 'granted') {
+    permission = await Location.requestForegroundPermissionsAsync();
+  }
+  if (permission.status !== 'granted') {
+    return null;
+  }
+
   try {
-    return requireOptionalNativeModule('ExpoLocation') != null;
+    return await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+    });
   } catch {
-    return false;
+    const lastKnownLocation = await Location.getLastKnownPositionAsync();
+    if (lastKnownLocation) return lastKnownLocation;
+    return null;
   }
 }
 
-async function saveSession(session: TrackingSession) {
-  await AsyncStorage.setItem(SESSION_KEY, session.trackingSessionId);
-  await AsyncStorage.setItem(`${SESSION_KEY}:interval`, String(session.pingIntervalSeconds));
-}
-
-async function getSessionId(): Promise<string | null> {
-  return AsyncStorage.getItem(SESSION_KEY);
-}
-
-async function getInterval(): Promise<number> {
-  const value = await AsyncStorage.getItem(`${SESSION_KEY}:interval`);
-  return value ? Number(value) : 300;
-}
-
-async function readQueue(): Promise<PingPayload[]> {
-  const raw = await AsyncStorage.getItem(QUEUE_KEY);
-  return raw ? JSON.parse(raw) : [];
-}
-
-async function writeQueue(queue: PingPayload[]) {
-  await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
-}
-
-async function queuePing(payload: PingPayload) {
-  const queue = await readQueue();
-  queue.push(payload);
-  await writeQueue(queue);
-}
-
-async function sendPing(payload: PingPayload): Promise<number> {
-  console.log('[Tracking] POST /tracking/ping', {
-    lat: payload.latitude,
-    lng: payload.longitude,
-  });
-  const response = await customAxios.post('/tracking/ping', payload);
-  const data = response.data?.data ?? response.data;
-  return data?.nextPingIntervalSeconds ?? 300;
-}
-
-async function flushQueue(sessionId: string) {
-  const queue = await readQueue();
-  if (!queue.length) return;
-
-  const remaining: PingPayload[] = [];
-  for (const item of queue) {
-    try {
-      await sendPing({ ...item, trackingSessionId: sessionId });
-    } catch {
-      remaining.push(item);
-      break;
-    }
-  }
-  await writeQueue(remaining);
-}
-
-async function collectLocation(): Promise<Omit<PingPayload, 'trackingSessionId'> | null> {
-  if (hasNativeGpsModule()) {
-    try {
-      const {
-        requestForegroundPermissionsAsync,
-        getCurrentPositionAsync,
-        Accuracy,
-      } = await import('expo-location');
-
-      const { status } = await requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        console.warn('[Tracking] Location permission denied');
-        return null;
-      }
-
-      const location = await getCurrentPositionAsync({ accuracy: Accuracy.Balanced });
-      return {
-        timestamp: new Date(location.timestamp).toISOString(),
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        accuracyMeters: location.coords.accuracy ?? undefined,
-        speedMph: location.coords.speed != null ? location.coords.speed * 2.237 : undefined,
-        appState: 'foreground',
-      };
-    } catch (error) {
-      console.warn('[Tracking] Native GPS failed:', error);
-    }
-  } else if (!gpsUnavailableLogged) {
-    gpsUnavailableLogged = true;
-    console.warn(
-      '[Tracking] Native ExpoLocation missing — using DEV fallback coordinates until you run: npx expo run:android',
-    );
-  }
-
-  // Dev/emulator fallback so tracking can be tested without a rebuilt native binary.
-  if (__DEV__) {
-    return {
-      timestamp: new Date().toISOString(),
-      ...DEV_FALLBACK_COORDS,
-      appState: 'foreground',
-    };
-  }
-
-  return null;
-}
-
-async function trySendGpsPing(sessionId: string): Promise<boolean> {
-  const coords = await collectLocation();
-  if (!coords) return false;
-
-  const payload: PingPayload = {
-    trackingSessionId: sessionId,
-    ...coords,
-  };
+async function sendCurrentLocation(sessionId: string): Promise<boolean> {
+  if (pingInFlight) return false;
+  pingInFlight = true;
 
   try {
-    const nextInterval = await sendPing(payload);
-    await AsyncStorage.setItem(`${SESSION_KEY}:interval`, String(nextInterval));
-    await flushQueue(sessionId);
-    schedulePingLoop(nextInterval);
-    return true;
-  } catch (error) {
-    console.warn('[Tracking] Ping failed, queued offline:', error);
-    await queuePing(payload);
-    return false;
+    const location = await getForegroundLocation();
+    if (!location) return false;
+    const payload = toTrackingPing(location, sessionId, getAppState());
+    try {
+      const nextInterval = await sendTrackingPing(payload);
+      await saveTrackingSession({
+        trackingSessionId: sessionId,
+        trackingMode: 'UNKNOWN',
+        pingIntervalSeconds: nextInterval,
+      });
+      await flushTrackingQueue(sessionId);
+      scheduleForegroundPing(nextInterval);
+      await startBackgroundUpdates(nextInterval);
+      return true;
+    } catch {
+      await queueTrackingPing(payload);
+      return false;
+    }
+  } finally {
+    pingInFlight = false;
   }
 }
 
-function schedulePingLoop(intervalSeconds: number) {
+function scheduleForegroundPing(intervalSeconds: number): void {
+  const intervalMs = normalizePingInterval(intervalSeconds) * 1000;
   if (pingTimer) clearInterval(pingTimer);
   pingTimer = setInterval(() => {
-    getSessionId().then((sessionId) => {
-      if (sessionId) trySendGpsPing(sessionId);
+    if (AppState.currentState !== 'active') return;
+    getTrackingSessionId().then((sessionId) => {
+      if (sessionId) void sendCurrentLocation(sessionId);
     });
-  }, Math.max(intervalSeconds, 15) * 1000);
+  }, intervalMs);
+}
+
+
+async function startBackgroundUpdates(intervalSeconds: number): Promise<void> {
+  try {
+    const Location = await import('expo-location');
+    const TaskManager = await import('expo-task-manager');
+
+    let fg = await Location.getForegroundPermissionsAsync();
+    if (fg.status !== 'granted') {
+      fg = await Location.requestForegroundPermissionsAsync();
+    }
+    if (fg.status !== 'granted') {
+      return;
+    }
+
+    
+    
+    try {
+      await Location.requestBackgroundPermissionsAsync();
+    } catch {}
+
+    const requestedIntervalSeconds = normalizePingInterval(intervalSeconds);
+    const alreadyStarted = await Location.hasStartedLocationUpdatesAsync(
+      DRIVER_LOCATION_TASK,
+    );
+    if (
+      alreadyStarted &&
+      backgroundIntervalSeconds === requestedIntervalSeconds
+    ) {
+      return;
+    }
+
+    const isTaskDefined = await TaskManager.isTaskDefined(DRIVER_LOCATION_TASK);
+    if (!isTaskDefined) {
+      return;
+    }
+
+    
+    
+    
+    if (alreadyStarted) {
+      await Location.stopLocationUpdatesAsync(DRIVER_LOCATION_TASK);
+    }
+
+    const timeIntervalMs = requestedIntervalSeconds * 1000;
+
+    await Location.startLocationUpdatesAsync(DRIVER_LOCATION_TASK, {
+      accuracy: Location.Accuracy.Balanced,
+      timeInterval: timeIntervalMs,
+      
+      distanceInterval: 0,
+      deferredUpdatesInterval: timeIntervalMs,
+      showsBackgroundLocationIndicator: true,
+      pausesUpdatesAutomatically: false,
+      
+      
+      
+      foregroundService: {
+        notificationTitle: 'TMS Driver — Live tracking',
+        notificationBody: 'Sharing your location with dispatch',
+        notificationColor: '#2563eb',
+        killServiceOnDestroy: false,
+      },
+    });
+
+    backgroundIntervalSeconds = requestedIntervalSeconds;
+  } catch {}
+}
+
+async function stopBackgroundUpdates(): Promise<void> {
+  try {
+    const Location = await import('expo-location');
+    const started = await Location.hasStartedLocationUpdatesAsync(
+      DRIVER_LOCATION_TASK,
+    );
+    if (started) {
+      await Location.stopLocationUpdatesAsync(DRIVER_LOCATION_TASK);
+    }
+    backgroundIntervalSeconds = null;
+  } catch {}
+}
+
+function ensureAppStateListener() {
+  if (appStateSub) return;
+  appStateSub = AppState.addEventListener('change', (next) => {
+    if (next === 'active') {
+      getTrackingSessionId().then((sessionId) => {
+        if (sessionId) void sendCurrentLocation(sessionId);
+      });
+    }
+  });
 }
 
 async function createTrackingSession(): Promise<TrackingSession> {
-  const existingId = await getSessionId();
+  const existingId = await getTrackingSessionId();
   if (existingId) {
     return {
       trackingSessionId: existingId,
       trackingMode: 'IDLE_TRACKING',
-      pingIntervalSeconds: await getInterval(),
+      pingIntervalSeconds: await getTrackingInterval(),
     };
   }
 
   if (sessionPromise) return sessionPromise;
 
   sessionPromise = (async () => {
-    console.log('[Tracking] POST /tracking/start');
     const response = await customAxios.post('/tracking/start');
     const session: TrackingSession = response.data?.data ?? response.data;
-    await saveSession(session);
-    schedulePingLoop(session.pingIntervalSeconds);
+    await saveTrackingSession(session);
     return session;
   })();
 
@@ -201,10 +203,14 @@ async function createTrackingSession(): Promise<TrackingSession> {
   }
 }
 
-/** Login → start backend session, then send GPS (or DEV fallback) ping. */
+
 export async function ensureDriverTracking(): Promise<void> {
+  ensureAppStateListener();
   const session = await createTrackingSession();
-  await trySendGpsPing(session.trackingSessionId);
+  
+  scheduleForegroundPing(session.pingIntervalSeconds);
+  await startBackgroundUpdates(session.pingIntervalSeconds);
+  await sendCurrentLocation(session.trackingSessionId);
 }
 
 export async function startDriverTracking(): Promise<void> {
@@ -216,18 +222,26 @@ export async function stopDriverTracking(): Promise<void> {
     clearInterval(pingTimer);
     pingTimer = null;
   }
-  gpsUnavailableLogged = false;
+  pingInFlight = false;
+  backgroundIntervalSeconds = null;
+  if (appStateSub) {
+    appStateSub.remove();
+    appStateSub = null;
+  }
+  await stopBackgroundUpdates();
   try {
-    console.log('[Tracking] POST /tracking/stop');
     await customAxios.post('/tracking/stop');
   } finally {
-    await AsyncStorage.multiRemove([SESSION_KEY, `${SESSION_KEY}:interval`]);
+    await clearTrackingSession();
   }
 }
 
 export async function resumeDriverTrackingIfNeeded(): Promise<void> {
-  const sessionId = await getSessionId();
+  const sessionId = await getTrackingSessionId();
   if (!sessionId) return;
-  schedulePingLoop(await getInterval());
-  await trySendGpsPing(sessionId);
+  ensureAppStateListener();
+  const interval = await getTrackingInterval();
+  scheduleForegroundPing(interval);
+  await startBackgroundUpdates(interval);
+  await sendCurrentLocation(sessionId);
 }
