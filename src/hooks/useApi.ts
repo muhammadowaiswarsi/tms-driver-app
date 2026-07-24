@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { handleMutationSuccess, handleQueryError } from '../lib/react-query';
 import { customAxios } from '../services/api';
 
-// Generic GET hook with query parameter support
+
 export const useGet = (queryKey: any[], url: string, options: any = {}) => {
   const { queryParams, ...otherOptions } = options;
   return useQuery({
@@ -31,7 +31,6 @@ export const useGet = (queryKey: any[], url: string, options: any = {}) => {
   });
 };
 
-// Generic POST hook
 export const usePost = (queryKey: any[], url: string, options: any = {}) => {
   const queryClient = useQueryClient();
 
@@ -60,7 +59,6 @@ export const usePost = (queryKey: any[], url: string, options: any = {}) => {
   });
 };
 
-// Generic PUT hook
 export const usePut = (queryKey: any[], url: string, options: any = {}) => {
   const queryClient = useQueryClient();
 
@@ -89,7 +87,6 @@ export const usePut = (queryKey: any[], url: string, options: any = {}) => {
   });
 };
 
-// Generic PATCH hook
 export const usePatch = (queryKey: any[], url: string, options: any = {}) => {
   const queryClient = useQueryClient();
 
@@ -131,7 +128,6 @@ export const usePatch = (queryKey: any[], url: string, options: any = {}) => {
   });
 };
 
-// Generic DELETE hook
 export const useDelete = (queryKey: any[], url: string, options: any = {}) => {
   const queryClient = useQueryClient();
 

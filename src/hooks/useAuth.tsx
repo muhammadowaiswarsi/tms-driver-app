@@ -80,14 +80,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<any>(null);
 
-  // Set up refresh token callback for API interceptor
+  
   useEffect(() => {
     setRefreshTokenCallback(async (): Promise<any> => {
       return await AuthService.refreshTokens();
     });
   }, []);
 
-  // Initialize auth state on mount
+  
   useEffect(() => {
     const initializeAuth = async () => {
       setIsLoading(true);
@@ -296,7 +296,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const refreshUserData = useCallback(async () => {
-    // Implement if needed
+    
   }, []);
 
   const isAuthenticated = useMemo(() => {

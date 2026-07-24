@@ -27,7 +27,7 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({
   return (
     <View style={[styles.container, { paddingTop: hideHeader ? 0 : insets.top }]}>
       <View style={styles.wrapper}>
-        {/* Header */}
+        
         {!hideHeader && (
           <MobileHeader
             title={title}
@@ -36,10 +36,10 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({
           />
         )}
 
-        {/* Main Content */}
+        
         <View style={styles.content}>{children}</View>
 
-        {/* Bottom Navigation */}
+        
         <BottomNavigation currentTab={currentTab} />
       </View>
     </View>

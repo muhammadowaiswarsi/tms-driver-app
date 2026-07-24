@@ -15,7 +15,7 @@ import DriverLayout from '../../src/components/common/DriverLayout';
 import { useAuth } from '../../src/hooks/useAuth';
 import { driverTheme } from '../../src/theme/driverTheme';
 
-// Type assertion helper for Card component (React Native Elements types don't include children)
+
 const TypedCard = Card as any;
 
 const Others: React.FC = () => {
@@ -38,8 +38,8 @@ const Others: React.FC = () => {
   const handleLogoutConfirm = async () => {
     try {
       setLogoutDialogOpen(false);
-      // Call logout which will update auth state
-      // ProtectedRoute will automatically redirect to /auth/login
+      
+      
       await logoutAuth();
     } catch {
       Alert.alert('Error', 'Failed to logout');
@@ -160,7 +160,7 @@ const Others: React.FC = () => {
   return (
     <DriverLayout title="Others" showBackButton onBackClick={handleBackClick} currentTab="others">
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Profile Section */}
+        
         <TypedCard containerStyle={styles.profileCard}>
           <View style={styles.profileContent}>
             <Avatar
@@ -178,7 +178,7 @@ const Others: React.FC = () => {
           </View>
         </TypedCard>
 
-        {/* Preferences Section */}
+        
         <TypedCard containerStyle={styles.sectionCard}>
           <Text style={styles.sectionTitle}>PREFERENCES</Text>
           <View style={styles.listContainer}>
@@ -186,7 +186,7 @@ const Others: React.FC = () => {
           </View>
         </TypedCard>
 
-        {/* General Section */}
+        
         <TypedCard containerStyle={styles.sectionCard}>
           <Text style={styles.sectionTitle}>GENERAL</Text>
           <View style={styles.listContainer}>
@@ -194,7 +194,7 @@ const Others: React.FC = () => {
           </View>
         </TypedCard>
 
-        {/* Logout Section */}
+        
         <TypedCard containerStyle={styles.logoutCard}>
           <TouchableOpacity
             style={styles.logoutButton}
@@ -207,14 +207,14 @@ const Others: React.FC = () => {
         </TypedCard>
       </ScrollView>
 
-      {/* Check In/Out Modal */}
+      
       <CheckInOut
         visible={checkInOutModalOpen}
         onClose={() => setCheckInOutModalOpen(false)}
         userName={userData?.name}
       />
 
-      {/* Logout Dialog */}
+      
       {logoutDialogOpen && (
         <View style={styles.dialogOverlay}>
           <View style={styles.dialogCard}>
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 0, // No extra padding - content should be close to bottom nav
+    paddingBottom: 0, 
   },
   profileCard: {
     borderRadius: 0,
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   logoutCard: {
     borderRadius: 0,
     margin: 0,
-    marginBottom: 0, // No margin at bottom for last item
+    marginBottom: 0, 
     padding: 0,
   },
   sectionTitle: {
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 1000,
     paddingHorizontal: driverTheme.spacing.md,
-    paddingBottom: 120, // Space to avoid bottom navigation
+    paddingBottom: 120, 
   },
   dialogCard: {
     borderRadius: 16,

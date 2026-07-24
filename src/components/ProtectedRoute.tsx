@@ -15,7 +15,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const pathname = usePathname();
   const hasRedirectedRef = useRef<string>('');
 
-  // Memoize the route check to prevent unnecessary recalculations
+  
   const segmentsString = segments.join('/');
   const routeInfo = useMemo(() => {
     const inAuthGroup = segments[0] === 'auth';
@@ -31,12 +31,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     const { inAuthGroup, currentPath } = routeInfo;
     const redirectKey = `${isAuthenticated}-${currentPath}`;
 
-    // Prevent redirecting to the same route we just redirected to
     if (hasRedirectedRef.current === redirectKey) {
       return;
     }
 
-    // Only redirect when auth state changes, not on every pathname change
     const shouldRedirect = 
       (!isAuthenticated && !inAuthGroup && !currentPath.includes('/auth/login')) ||
       (isAuthenticated && inAuthGroup && !currentPath.includes('/(tabs)/loads'));
@@ -51,7 +49,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     } else {
       hasRedirectedRef.current = redirectKey;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, isLoading]); // Only redirect when auth state changes
 
   if (isLoading) {

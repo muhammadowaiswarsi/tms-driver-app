@@ -1,7 +1,7 @@
-// AWS Amplify Configuration
-// OAuth removed because:
-// - Localhost redirect doesn't work on mobile
-// - If Google/Facebook is needed, a separate setup is required
+
+
+
+
 
 const awsExports = {
   Auth: {

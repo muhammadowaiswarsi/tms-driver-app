@@ -22,20 +22,20 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
       path: '/(tabs)/loads',
       badgeCount: 0,
     },
-    // {
-    //   label: 'Clock in',
-    //   icon: 'timer',
-    //   value: 'clockin',
-    //   path: '/(tabs)/clock-in',
-    //   badgeCount: 0,
-    // },
-    // {
-    //   label: 'Pay',
-    //   icon: 'receipt',
-    //   value: 'documents',
-    //   path: '/(tabs)/pay',
-    //   badgeCount: 0,
-    // },
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     {
       label: 'Messages',
       icon: 'chat-bubble-outline',
@@ -53,14 +53,14 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
   ];
 
   const getCurrentValue = () => {
-    // First check if currentTab prop is provided
+    
     if (currentTab) {
       return currentTab;
     }
     
-    // Otherwise, check pathname
+    
     if (pathname) {
-      // Check for exact matches first
+      
       if (pathname.includes('/loads') || pathname.includes('/load-details')) {
         return 'loads';
       }
@@ -71,7 +71,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
         return 'others';
       }
       
-      // Fallback to pathname matching
+      
       const currentItem = navigationItems.find((item) => 
         pathname.includes(item.path) || pathname === item.path
       );

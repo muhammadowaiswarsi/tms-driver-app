@@ -40,7 +40,7 @@ import { customAxios } from "../../src/services/api";
 import { driverTheme } from "../../src/theme/driverTheme";
 import { Event } from "../../src/types/driver.types";
 
-// Type assertion helper for Card component (React Native Elements types don't include children)
+
 const TypedCard = Card as any;
 
 const ORGANIZATION_DOCUMENT_OPTIONS = [
@@ -77,7 +77,7 @@ const normalizeDocumentType = (value: string) =>
     .toLowerCase()
     .replace(/[\s-]+/g, "_");
 
-/** POD row hidden on the upload list for now (signature flow covers POD). */
+
 const isProofOfDeliveryDoc = (doc: { type?: string }) => {
   const t = normalizeDocumentType(String(doc?.type || ""));
   return (
@@ -179,7 +179,7 @@ const LoadSearch: React.FC = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [currentTab, setCurrentTab] = useState(() => {
-    // Set initial tab based on query parameter, default to 0 (Active)
+    
     return params.tab === "upcoming" ? 1 : 0;
   });
   const [confirmDialog, setConfirmDialog] = useState(false);
@@ -239,7 +239,6 @@ const LoadSearch: React.FC = () => {
       .join("|");
   }, [driverActiveLoads?.data?.routing]);
 
-  // Live GPS for "you are here" marker
   useEffect(() => {
     let cancelled = false;
 
@@ -257,7 +256,6 @@ const LoadSearch: React.FC = () => {
           longitude: pos.coords.longitude,
         });
       } catch {
-        // ignore — map still shows pickup/delivery if geocoded
       }
     };
 
@@ -269,7 +267,6 @@ const LoadSearch: React.FC = () => {
     };
   }, []);
 
-  // Geocode event addresses → pickup / delivery / stop markers
   useEffect(() => {
     let cancelled = false;
     const events = (driverActiveLoads?.data?.routing?.[0]?.events ||
@@ -315,28 +312,13 @@ const LoadSearch: React.FC = () => {
     };
   }, [activeEventsKey, driverActiveLoads?.data?.id]);
 
-  // Chassis data - will be used when implementing chassis picker
-  // const { authState } = useAuth();
-  // const companyId = authState?.userData?.companyId;
-  // const { data: chassis } = useChassis({
-  //   companyId: companyId,
-  //   limit: 100,
-  // });
 
-  // TODO: Implement chassis picker using chassisOptions
-  // const chassisOptions =
-  //   chassis?.data?.map((chassisProfile: any) => ({
-  //     id: chassisProfile.id,
-  //     label: chassisProfile.chassisNumber,
-  //     value: chassisProfile.id,
-  //   })) || [];
 
   const { mutate: driverStartLoad } = useDriverStartLoadRoutingMove(
     driverActiveLoads?.data?.id || "",
     {
       onSuccess: () => {
         refetchActive();
-        // Alert.alert('Success', 'Load routing move started successfully');
         setStartLoadDialog(false);
       },
       onError: (error: any) => {
@@ -352,7 +334,6 @@ const LoadSearch: React.FC = () => {
         refetchActive();
         setConfirmDialog(false);
         setIsUpdating(false);
-        // Alert.alert('Success', 'Status updated successfully');
       },
       onError: (error: any) => {
         setIsUpdating(false);
@@ -374,7 +355,6 @@ const LoadSearch: React.FC = () => {
         setPodEsignData(createDefaultPodEsignValues());
         setEsignInitialSnapshot(createDefaultPodEsignValues());
         setIsCompleting(false);
-        // Alert.alert('Success', 'Load completed successfully');
         setTimeout(() => {
           setCurrentTab(1);
         }, 1000);
@@ -409,13 +389,8 @@ const LoadSearch: React.FC = () => {
     const showCompleted = isCompleteType;
     const completedEnabled = isCurrentEvent && isCompleteType;
     const arrivedEnabled = isCurrentEvent && event.status === "PENDING";
-    // console.log(event.status);
     const departedEnabled = isCurrentEvent && event.status === "ARRIVED";
-    // console.log("departedEnabled", departedEnabled);
 
-    // Check if buttons should be green (active/enabled state)
-    // Arrived: Green only when enabled (PENDING status and current event) - gray when disabled (ARRIVED/DEPARTED)
-    // Departed: Green when status is ARRIVED (enabled) OR DEPARTED (completed) - regardless of current event
     const arrivedActive = event.status === "PENDING" && isCurrentEvent;
     const departedActive =
       event.status === "ARRIVED" || event.status === "DEPARTED";
@@ -505,7 +480,6 @@ const LoadSearch: React.FC = () => {
     }
   };
 
-  // Map local document types to API document types (uppercase enum format)
   const mapDocumentTypeToAPI = (localType: string): string => {
     const typeMap: Record<string, string> = {
       proofOfDelivery: "PROOF_OF_DELIVERY",
@@ -582,10 +556,8 @@ const LoadSearch: React.FC = () => {
 
   useEffect(() => {
     refetchActive();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update tab when params change
   useEffect(() => {
     if (params.tab === "upcoming") {
       setCurrentTab(1);
@@ -633,7 +605,6 @@ const LoadSearch: React.FC = () => {
 
   const handleFileUpload = async (docId: string) => {
     try {
-      // Dynamically import expo-document-picker
       let getDocumentAsync;
       try {
         const documentPicker = await import("expo-document-picker");
@@ -664,7 +635,6 @@ const LoadSearch: React.FC = () => {
         return;
       }
 
-      // Create FormData for file upload
       const formData = new FormData();
       formData.append("file", {
         uri: file.uri,
@@ -674,7 +644,6 @@ const LoadSearch: React.FC = () => {
 
       const customFileName = `${Date.now()}_${file.name || "document"}`;
 
-      // Upload file to server
       const uploadResponse = await customAxios.post(
         "/upload/single",
         formData,
@@ -692,8 +661,6 @@ const LoadSearch: React.FC = () => {
       if (uploadResponse.data.success && uploadResponse.data.data) {
         const uploadData = uploadResponse.data.data;
 
-        // Just store upload data in local state - don't call document API yet
-        // Documents will be sent when completing the load
         setDocuments((prev) =>
           prev.map((d) =>
             d.id === docId
@@ -707,11 +674,8 @@ const LoadSearch: React.FC = () => {
           ),
         );
 
-        // Alert.alert('Success', 'Document uploaded successfully');
       }
     } catch (error: any) {
-      console.error("Upload error:", error);
-      // Handle error message - API might return array or string
       let errorMessage = "Failed to upload document";
       if (error?.response?.data?.message) {
         const message = error.response.data.message;
@@ -787,7 +751,6 @@ const LoadSearch: React.FC = () => {
         data: payload,
       });
     } catch {
-      // Error handled by onError callback
     }
   };
 
@@ -817,7 +780,7 @@ const LoadSearch: React.FC = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Map View — pickup / delivery / live driver */}
+        
         <CustomMapView
           height={300}
           markers={mapMarkers}
@@ -825,7 +788,7 @@ const LoadSearch: React.FC = () => {
           showRoute
         />
 
-        {/* Events List */}
+        
         <View style={styles.eventsContainer}>
           {driverActiveLoads?.data?.status === "PENDING" ? (
             <TypedCard containerStyle={styles.loadCard}>
@@ -880,7 +843,6 @@ const LoadSearch: React.FC = () => {
                   event,
                   originalEventIndex,
                 );
-                console.log(buttonStates, "buttonStates");
                 const isCurrentEvent = originalEventIndex === currentEventIndex;
 
                 return (
@@ -1112,7 +1074,7 @@ const LoadSearch: React.FC = () => {
   return (
     <DriverLayout title={headerTitle} currentTab="loads">
       <View style={styles.container}>
-        {/* Tabs */}
+        
         <View style={styles.tabsContainer}>
           <TouchableOpacity
             style={[styles.tab, currentTab === 0 && styles.activeTab]}
@@ -1136,7 +1098,7 @@ const LoadSearch: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Tab Content */}
+        
         {isLoadingActive || isLoadingUpcoming ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator
@@ -1151,7 +1113,7 @@ const LoadSearch: React.FC = () => {
         )}
       </View>
 
-      {/* Confirmation Dialogs */}
+      
       {confirmDialog && (
         <View style={styles.dialogOverlay}>
           <TypedCard containerStyle={styles.dialogCard}>
@@ -1190,7 +1152,7 @@ const LoadSearch: React.FC = () => {
         </View>
       )}
 
-      {/* Start Load Dialog */}
+      
       {startLoadDialog && (
         <View style={styles.dialogOverlay}>
           <TypedCard containerStyle={styles.dialogCard}>
@@ -1225,7 +1187,7 @@ const LoadSearch: React.FC = () => {
         </View>
       )}
 
-      {/* Sign Proof of Delivery — opens before Complete Load (documents) */}
+      
       {podSignPromptDialog && (
         <View style={styles.dialogOverlay}>
           <View style={styles.podSignCard}>
@@ -1300,7 +1262,7 @@ const LoadSearch: React.FC = () => {
         </View>
       )}
 
-      {/* E-Sign: signature + print name + date / times */}
+      
       {podEsignDialog && (
         <View style={styles.dialogOverlay}>
           <ESignScreen
@@ -1312,7 +1274,7 @@ const LoadSearch: React.FC = () => {
         </View>
       )}
 
-      {/* Document Upload Dialog */}
+      
       {documentDialog && (
         <View style={styles.dialogOverlay}>
           <View style={styles.documentDialogCard}>
@@ -1336,7 +1298,7 @@ const LoadSearch: React.FC = () => {
               showsVerticalScrollIndicator={true}
               nestedScrollEnabled
             >
-              {/* Chassis Number */}
+              
               <View style={styles.documentField}>
                 <Text style={styles.documentFieldLabel}>Chassis #</Text>
                 <TouchableWithoutFeedback
@@ -1424,7 +1386,7 @@ const LoadSearch: React.FC = () => {
                 </TouchableWithoutFeedback>
               </View>
 
-              {/* Container Number */}
+              
               <View style={styles.documentField}>
                 <Text style={styles.documentFieldLabel}>Container #</Text>
                 <Input
@@ -1437,7 +1399,7 @@ const LoadSearch: React.FC = () => {
                 />
               </View>
 
-              {/* Documents (Proof of Delivery upload row off for now — e-sign) */}
+              
               <Text style={styles.documentSectionTitle}>Documents</Text>
               <View>
                 {documents
@@ -1492,17 +1454,9 @@ const LoadSearch: React.FC = () => {
                           uploadingDocId === doc.id ? "Uploading..." : "Upload"
                         }
                         onPress={() => handleFileUpload(doc.id)}
-                        // disabled={uploadingDocId !== null}
                         loading={uploadingDocId === doc.id}
                         buttonStyle={
                           [
-                            // styles.uploadButton,
-                            // {
-                            //   backgroundColor:
-                            //     uploadingDocId === doc.id
-                            //       ? driverTheme.colors.grey[400]
-                            //       : driverTheme.colors.primary.main,
-                            // },
                           ]
                         }
                         titleStyle={styles.uploadButtonTitle}
@@ -1577,7 +1531,7 @@ const LoadSearch: React.FC = () => {
         </View>
       )}
 
-      {/* Complete Load Confirmation Dialog */}
+      
       {completeDialog && (
         <View style={styles.dialogOverlay}>
           <TypedCard containerStyle={styles.dialogCard}>
@@ -1799,8 +1753,6 @@ const styles = StyleSheet.create({
   eventButtons: {
     flexDirection: "column",
     width: "100%",
-    // marginLeft: -driverTheme.spacing.sm,
-    // marginRight: -driverTheme.spacing.sm,
     gap: driverTheme.spacing.sm,
   },
   fullWidthButton: {

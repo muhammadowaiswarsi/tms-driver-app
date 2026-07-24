@@ -7,7 +7,7 @@ import CustomMapView from "../src/components/common/MapView";
 import { useDriverLoadDecision, useLoadRouting } from "../src/hooks/useLoad";
 import { driverTheme } from "../src/theme/driverTheme";
 
-// Type assertion helper for Card component (React Native Elements types don't include children)
+
 const TypedCard = Card as any;
 
 const LoadDetails: React.FC = () => {
@@ -72,7 +72,7 @@ const LoadDetails: React.FC = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Map View */}
+        
         <CustomMapView
           height={300}
           markers={
@@ -91,7 +91,7 @@ const LoadDetails: React.FC = () => {
           }
         />
 
-        {/* Routing Events */}
+        
         {loadRoutingData &&
           (loadRoutingData as any).data &&
           (loadRoutingData as any).data[0] &&
@@ -123,7 +123,7 @@ const LoadDetails: React.FC = () => {
             </View>
           )}
 
-        {/* Action Buttons */}
+        
         <View style={styles.actionButtons}>
           <Button
             title={isAccepting ? "Accepting..." : "Accept Load"}
@@ -142,7 +142,7 @@ const LoadDetails: React.FC = () => {
         </View>
       </ScrollView>
 
-      {/* Accept Confirmation Dialog */}
+      
       {confirmDialog && (
         <View style={styles.dialogOverlay}>
           <View style={styles.dialogCard}>
@@ -162,13 +162,7 @@ const LoadDetails: React.FC = () => {
                 onPress={handleConfirmAccept}
                 disabled={isAccepting}
               />
-              {/* <Button
-                title="Accept with navigation"
-                onPress={() => setConfirmDialog(false)}
-                disabled={isAccepting}
-                buttonStyle={[styles.dialogButton, { backgroundColor: driverTheme.colors.grey[400] }]}
-                titleStyle={styles.dialogButtonText}
-              /> */}
+              
               <Button
                 title="Cancel"
                 onPress={() => setConfirmDialog(false)}
@@ -184,7 +178,7 @@ const LoadDetails: React.FC = () => {
         </View>
       )}
 
-      {/* Reject Confirmation Dialog */}
+      
       {rejectDialog && (
         <View style={styles.dialogOverlay}>
           <View style={styles.dialogCard}>

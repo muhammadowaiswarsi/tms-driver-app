@@ -1,4 +1,4 @@
-/** Display as MM/DD/YY (matches product screens). */
+
 export function formatDateMdYy(d: Date): string {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
@@ -6,7 +6,6 @@ export function formatDateMdYy(d: Date): string {
   return `${mm}/${dd}/${yy}`;
 }
 
-/** e.g. "4:15 PM" */
 export function formatTimeAmPm(d: Date): string {
   return d.toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -33,7 +32,6 @@ export function parseDateMdYy(s: string): Date {
   return new Date(y, parseInt(m[1], 10) - 1, parseInt(m[2], 10));
 }
 
-/** Parse "4:15 PM" style into a Date (uses same calendar day as `day`). */
 export function parseTimeAmPmOnDay(timeStr: string, day: Date): Date {
   const base = new Date(day);
   const t = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);

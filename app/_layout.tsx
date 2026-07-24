@@ -1,10 +1,10 @@
-// Import polyfills FIRST - must be before any other imports
+
 import 'react-native-get-random-values';
-// NOTE:
-// `@aws-amplify/react-native` requires native linking and will fail in Expo Go.
-// If you use Expo Go, keep this commented out (or remove the dependency).
-// If you use a custom Dev Client / prebuild, you can re-enable it.
-// import '@aws-amplify/react-native';
+
+
+
+
+
 import 'react-native-url-polyfill/auto';
 
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
@@ -17,7 +17,9 @@ import * as Notifications from 'expo-notifications';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import ProtectedRoute from '../src/components/ProtectedRoute';
-import '../src/config/amplify'; // Initialize AWS Amplify
+import '../src/config/amplify'; 
+
+import '../src/services/backgroundLocationTask';
 import { AuthProvider } from '../src/hooks/useAuth';
 import { queryClient } from '../src/lib/react-query';
 

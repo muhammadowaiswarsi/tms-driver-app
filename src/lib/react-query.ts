@@ -15,12 +15,12 @@ interface ErrorResponse {
   message?: string;
 }
 
-// Default query client configuration
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes
+      staleTime: 5 * 60 * 1000, 
+      gcTime: 10 * 60 * 1000, 
       retry: (failureCount: number, error: ErrorResponse) => {
         if (error?.response?.status && error.response.status >= 400 && error.response.status < 500) {
           return false;
@@ -39,24 +39,24 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Global error handler for queries
+
 export const handleQueryError = (error: ErrorResponse): void => {
   const errorMessage =
     error?.response?.data?.message ||
     error?.message ||
     'An unexpected error occurred';
 
-  // Show error alert in React Native
+  
   Alert.alert('Error', Array.isArray(errorMessage) ? errorMessage[0] : errorMessage);
 };
 
-// Global success handler for mutations
+
 export const handleMutationSuccess = (message: string = 'Operation completed successfully'): void => {
-  // In React Native, we can use a toast library or Alert
-  // Toast library can be integrated here if needed
+  
+  
 };
 
-// Query key factory
+
 export const queryKeys = {
   driverLoads: {
     all: ['driverLoads'] as const,

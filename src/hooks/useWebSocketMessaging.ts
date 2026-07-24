@@ -47,7 +47,7 @@ export const useWebSocketMessaging = (options: UseWebSocketMessagingOptions = {}
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<Error | null>(null);
   
-  // Store callbacks in refs to prevent infinite re-renders
+  
   const callbacksRef = useRef({
     onNewMessage,
     onMessageSent,
@@ -57,7 +57,7 @@ export const useWebSocketMessaging = (options: UseWebSocketMessagingOptions = {}
     onError,
   });
   
-  // Update refs when callbacks change
+  
   useEffect(() => {
     callbacksRef.current = {
       onNewMessage,
@@ -69,23 +69,22 @@ export const useWebSocketMessaging = (options: UseWebSocketMessagingOptions = {}
     };
   }, [onNewMessage, onMessageSent, onUserTyping, onMessagesRead, onUserOnline, onError]);
 
-  // Get WebSocket URL from API URL
+  
   const getWebSocketUrl = useCallback(() => {
     const baseUrl = appConfig.apiUrl;
-    // Remove /api suffix if present
+    
     let wsBaseUrl = baseUrl.endsWith('/api') ? baseUrl.slice(0, -4) : baseUrl.replace('/api', '');
     
-    // For Android emulator, replace localhost with 10.0.2.2
+    
     if (__DEV__ && wsBaseUrl.includes('localhost')) {
       wsBaseUrl = wsBaseUrl.replace('localhost', '10.0.2.2');
     }
     
-    // Ensure no trailing slash before adding /messaging
+    
     wsBaseUrl = wsBaseUrl.replace(/\/$/, '');
     return `${wsBaseUrl}/messaging`;
   }, []);
 
-  // Initialize Socket.IO connection
   useEffect(() => {
     if (!enabled || !accessToken) {
       return;
@@ -93,7 +92,6 @@ export const useWebSocketMessaging = (options: UseWebSocketMessagingOptions = {}
 
     const wsUrl = getWebSocketUrl();
     
-    // Create Socket.IO connection with authentication
     const socket = io(wsUrl, {
       auth: {
         token: accessToken,
@@ -106,7 +104,6 @@ export const useWebSocketMessaging = (options: UseWebSocketMessagingOptions = {}
 
     socketRef.current = socket;
 
-    // Connection event handlers
     socket.on('connect', () => {
       setIsConnected(true);
       setConnectionError(null);
@@ -124,7 +121,6 @@ export const useWebSocketMessaging = (options: UseWebSocketMessagingOptions = {}
       }
     });
 
-    // Message event handlers - use refs to avoid recreating listeners
     socket.on('new-message', (data: Message) => {
       if (callbacksRef.current.onNewMessage) {
         callbacksRef.current.onNewMessage(data);
@@ -155,9 +151,7 @@ export const useWebSocketMessaging = (options: UseWebSocketMessagingOptions = {}
       }
     });
 
-    // Cleanup on unmount
     return () => {
-      // Remove all event listeners before disconnecting
       socket.off('connect');
       socket.off('disconnect');
       socket.off('connect_error');
@@ -175,7 +169,6 @@ export const useWebSocketMessaging = (options: UseWebSocketMessagingOptions = {}
     };
   }, [enabled, accessToken, getWebSocketUrl]);
 
-  // Join a conversation room
   const joinConversation = useCallback((conversationId: string | number) => {
     if (!socketRef.current || !isConnected) {
       return;
@@ -184,7 +177,6 @@ export const useWebSocketMessaging = (options: UseWebSocketMessagingOptions = {}
     socketRef.current.emit('join-conversation', { conversationId });
   }, [isConnected]);
 
-  // Leave a conversation room
   const leaveConversation = useCallback((conversationId: string | number) => {
     if (!socketRef.current || !isConnected) {
       return;
@@ -193,7 +185,6 @@ export const useWebSocketMessaging = (options: UseWebSocketMessagingOptions = {}
     socketRef.current.emit('leave-conversation', { conversationId });
   }, [isConnected]);
 
-  // Send a message via WebSocket
   const sendMessage = useCallback((data: {
     conversationId: string | number;
     content: string;
@@ -218,7 +209,6 @@ export const useWebSocketMessaging = (options: UseWebSocketMessagingOptions = {}
     });
   }, [isConnected]);
 
-  // Send typing indicator
   const sendTyping = useCallback((conversationId: string | number, isTyping: boolean) => {
     if (!socketRef.current || !isConnected) {
       return;
@@ -230,7 +220,6 @@ export const useWebSocketMessaging = (options: UseWebSocketMessagingOptions = {}
     });
   }, [isConnected]);
 
-  // Mark messages as read
   const markMessagesAsRead = useCallback((conversationId: string | number, messageIds: (string | number)[]) => {
     if (!socketRef.current || !isConnected) {
       return;

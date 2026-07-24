@@ -43,11 +43,11 @@ const CheckInOut: React.FC<CheckInOutProps> = ({
   const isClockedIn = shiftData.isCheckedIn || false;
   const isOnBreak = shiftData.isOnBreak || false;
 
-  // Match web logic: fall back to lastCheckIn if currentCheckIn missing
+  
   const checkInTime = shiftData.currentCheckIn ?? shiftData.lastCheckIn;
   const shiftStartTime = checkInTime ? new Date(checkInTime) : null;
 
-  // Match web logic: use lastBreakStart for current/last break start
+  
   const breakStartTime = shiftData.lastBreakStart
     ? new Date(shiftData.lastBreakStart)
     : null;
@@ -186,10 +186,10 @@ const CheckInOut: React.FC<CheckInOutProps> = ({
                 {getGreeting()}, {displayName}!
               </Text>
 
-              {/* Date and Time */}
+              
               <Text style={styles.dateTimeText}>{formatDateTime()}</Text>
 
-              {/* Status */}
+              
               <View
                 style={[
                   styles.statusPill,
@@ -234,7 +234,6 @@ const CheckInOut: React.FC<CheckInOutProps> = ({
               </View>
 
               {!isClockedIn ? (
-                // Clocked Out State
                 <>
                   <TouchableOpacity
                     style={styles.startShiftButton}
@@ -253,7 +252,6 @@ const CheckInOut: React.FC<CheckInOutProps> = ({
                   <Text style={styles.startShiftText}>START SHIFT</Text>
                 </>
               ) : (
-                // Clocked In State
                 <>
                   <View style={styles.timerContainer}>
                     <Text style={styles.timerText}>

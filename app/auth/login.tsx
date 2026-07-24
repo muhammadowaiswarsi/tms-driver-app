@@ -34,7 +34,7 @@ export default function Login() {
     try {
       const result = await login(email, password);
       
-      // Check for error in result
+      
       if (result?.error) {
         Alert.alert('Login Failed', result.error);
         setLoading(false);
@@ -42,10 +42,10 @@ export default function Login() {
       }
       
       if (result?.challenge === 'NEW_PASSWORD_REQUIRED') {
-        // Handle new password required
+        
         router.push('/auth/new-password' as any);
       } else if (result?.user) {
-        // Login successful
+        
         router.replace('/(tabs)/loads' as any);
       } else {
         Alert.alert('Login Failed', 'An unknown error has occurred');

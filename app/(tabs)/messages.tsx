@@ -110,7 +110,7 @@ const Messages: React.FC = () => {
     limit: 100,
   });
 
-  // WebSocket connection for real-time messaging
+  
   const {
     isConnected,
     joinConversation,
@@ -120,7 +120,7 @@ const Messages: React.FC = () => {
     markMessagesAsRead,
   } = useWebSocketMessaging({
     onNewMessage: (newMessage: any) => {
-      // Update messages cache
+      
       if (selectedConversation && newMessage.conversationId === selectedConversation.id) {
         const queryKey = queryKeys.messaging.conversationMessagesList(
           selectedConversation.id,
@@ -128,7 +128,7 @@ const Messages: React.FC = () => {
         );
         const currentData = queryClient.getQueryData(queryKey);
         if (currentData && (currentData as any).data) {
-          // Check if message already exists to avoid duplicates
+          
           const messageExists = (currentData as any).data.some(
             (msg: any) => msg.id === newMessage.id
           );
@@ -145,15 +145,15 @@ const Messages: React.FC = () => {
             });
           }
         } else {
-          // If no cache, refetch
+          
           refetchMessages();
         }
       }
-      // Update conversations list to show new message preview
+      
       refetchConversations();
     },
     onMessageSent: (sentMessage: any) => {
-      // Update messages cache with sent message
+      
       if (selectedConversation && sentMessage.conversationId === selectedConversation.id) {
         const queryKey = queryKeys.messaging.conversationMessagesList(
           selectedConversation.id,
@@ -182,7 +182,7 @@ const Messages: React.FC = () => {
           ...prev,
           [String(data.userId)]: data.isTyping,
         }));
-        // Clear typing indicator after 3 seconds
+        
         if (typingTimeoutRef.current) {
           clearTimeout(typingTimeoutRef.current);
         }
@@ -197,7 +197,7 @@ const Messages: React.FC = () => {
       }
     },
     onMessagesRead: (data: { conversationId: string | number; messageIds: (string | number)[] }) => {
-      // Update message status to read in cache
+      
       if (selectedConversation && data.conversationId === selectedConversation.id) {
         const queryKey = queryKeys.messaging.conversationMessagesList(
           selectedConversation.id,
@@ -217,7 +217,7 @@ const Messages: React.FC = () => {
           });
         }
       }
-      // Refetch conversations to update unread count
+      
       refetchConversations();
     },
     enabled: !!authState?.isAuthenticated,
@@ -256,14 +256,14 @@ const Messages: React.FC = () => {
   const conversations: Conversation[] = conversationsResponse?.data || [];
   const companyUsers: User[] = usersResponse?.data || [];
 
-  // Refetch messages when conversation is selected (web code behavior)
+  
   useEffect(() => {
     if (selectedConversation?.id) {
       refetchMessages();
     }
   }, [selectedConversation?.id, refetchMessages]);
 
-  // Join conversation room when conversation is selected
+  
   useEffect(() => {
     if (selectedConversation?.id && isConnected) {
       joinConversation(selectedConversation.id);
@@ -281,7 +281,7 @@ const Messages: React.FC = () => {
     leaveConversation,
   ]);
 
-  // Mark all unread messages as read when opening conversation and messages are loaded
+  
   useEffect(() => {
     if (selectedConversation?.id && isConnected && messages.length > 0) {
       const unreadMessages = messages.filter(
@@ -299,7 +299,7 @@ const Messages: React.FC = () => {
     messages,
   ]);
 
-  // Auto scroll to last message
+  
   useEffect(() => {
     if (messages.length > 0 && messagesEndRef.current) {
       setTimeout(() => {
@@ -347,8 +347,7 @@ const Messages: React.FC = () => {
         originalName: uploaded.originalName,
         ...buildAttachmentPayload(uploaded),
       });
-    } catch (error) {
-      console.error("Attachment upload failed:", error);
+    } catch {
       Alert.alert("Upload failed", "Could not upload attachment. Please try again.");
       clearPendingAttachment();
     } finally {
@@ -377,7 +376,7 @@ const Messages: React.FC = () => {
     }
   };
 
-  // Handle typing indicator
+  
   const handleTyping = useCallback(
     (isTyping: boolean) => {
       if (selectedConversation?.id && isConnected) {
@@ -387,7 +386,7 @@ const Messages: React.FC = () => {
     [selectedConversation?.id, isConnected, sendTyping]
   );
 
-  // Update typing indicator when message input changes
+  
   useEffect(() => {
     if (!selectedConversation?.id || !isConnected) {
       return;
@@ -396,7 +395,7 @@ const Messages: React.FC = () => {
     if (message.trim()) {
       handleTyping(true);
 
-      // Clear typing after user stops typing for 1 second
+      
       const timeout = setTimeout(() => {
         handleTyping(false);
       }, 1000);
@@ -614,18 +613,10 @@ const Messages: React.FC = () => {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
-        {/* Floating Action Button for New Message */}
-        {/* {!selectedConversation && (
-          <TouchableOpacity
-            style={styles.fab}
-            onPress={() => setOpenNewMessageDialog(true)}
-            activeOpacity={0.8}
-          >
-            <Icon name="add" type="material" color="#fff" size={28} />
-          </TouchableOpacity>
-        )} */}
+        
+        
 
-        {/* New Message Dialog */}
+        
         <Modal
           visible={openNewMessageDialog}
           animationType="slide"
@@ -710,22 +701,8 @@ const Messages: React.FC = () => {
 
         {!selectedConversation ? (
           <View style={styles.conversationsContainer}>
-            {/* Search */}
-            {/* <View style={styles.searchContainer}>
-              <Icon
-                name="search"
-                type="material"
-                size={20}
-                color={driverTheme.colors.text.secondary}
-              />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search conversations..."
-                value={searchTerm}
-                onChangeText={setSearchTerm}
-                placeholderTextColor={driverTheme.colors.text.secondary}
-              />
-            </View> */}
+            
+            
 
             {isLoadingConversations ? (
               <View style={styles.loadingContainer}>
@@ -755,9 +732,8 @@ const Messages: React.FC = () => {
             )}
           </View>
         ) : (
-          // Chat View
           <View style={styles.chatContainer}>
-            {/* Custom Chat Header */}
+            
             {selectedConversation && (
               <View style={[styles.chatHeader, { paddingTop: insets.top + driverTheme.spacing.sm }]}>
                 <TouchableOpacity
@@ -781,14 +757,10 @@ const Messages: React.FC = () => {
                     )}
                   </View>
                 </View>
-                {/* <View style={styles.chatHeaderActions}>
-                  <TouchableOpacity style={styles.chatHeaderActionButton}>
-                    <Icon name="more-vert" type="material" size={24} color={driverTheme.colors.text.primary} />
-                  </TouchableOpacity>
-                </View> */}
+                
               </View>
             )}
-            {/* Messages Area */}
+            
             {isLoadingMessages ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator
@@ -815,7 +787,7 @@ const Messages: React.FC = () => {
                     messagesEndRef.current?.scrollToEnd({ animated: true });
                   }}
                 />
-                {/* Typing indicator */}
+                
                 {Object.entries(typingUsers).some(
                   ([_, isTyping]) => isTyping
                 ) && selectedConversation && (
@@ -830,7 +802,7 @@ const Messages: React.FC = () => {
               </>
             )}
 
-            {/* Message Input */}
+            
             <View style={styles.inputContainer}>
               {pendingAttachment ? (
                 <View style={styles.pendingAttachmentChip}>

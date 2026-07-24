@@ -1,6 +1,6 @@
 import { parseDateMdYy, parseTimeAmPmOnDay } from "./dateTimeFormat";
 
-/** API expects `YYYY-MM-DD` (e.g. "2026-04-27"). */
+
 export function toApiDateYmd(dateDisplay: string): string {
   const d = parseDateMdYy(dateDisplay);
   const y = d.getFullYear();
@@ -9,7 +9,6 @@ export function toApiDateYmd(dateDisplay: string): string {
   return `${y}-${m}-${day}`;
 }
 
-/** API expects `HH:mm` 24h (e.g. "09:00", "10:30"). */
 export function toApiTime24h(timeDisplay: string): string {
   const t = timeDisplay.trim();
   if (!t) {
@@ -27,7 +26,6 @@ export function toApiTime24h(timeDisplay: string): string {
   ).padStart(2, "0")}`;
 }
 
-/** Ensure `data:image/png;base64,...` for PATCH body. */
 export function normalizeSignatureDataUrl(dataUrl: string): string {
   const s = dataUrl.trim();
   if (!s) {

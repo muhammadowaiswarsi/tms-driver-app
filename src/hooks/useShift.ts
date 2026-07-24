@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { useGet, usePost } from "./useApi";
 import { queryKeys } from "../lib/react-query";
 
