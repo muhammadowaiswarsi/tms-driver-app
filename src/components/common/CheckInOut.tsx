@@ -19,15 +19,17 @@ import { driverTheme } from "../../theme/driverTheme";
 import { ShiftStatus } from "../../types/driver.types";
 
 interface CheckInOutProps {
-  visible: boolean;
-  onClose: () => void;
+  visible?: boolean;
+  onClose?: () => void;
   userName?: string;
+  embedded?: boolean;
 }
 
 const CheckInOut: React.FC<CheckInOutProps> = ({
-  visible,
+  visible = true,
   onClose,
   userName,
+  embedded = false,
 }) => {
   const { data: shiftStatus, isLoading, refetch } = useDriverShiftStatus();
   const shiftToggle = useDriverShiftToggle({ onSuccess: () => refetch() });
@@ -53,10 +55,10 @@ const CheckInOut: React.FC<CheckInOutProps> = ({
     : null;
 
   useEffect(() => {
-    if (visible) {
+    if (visible || embedded) {
       refetch();
     }
-  }, [visible, refetch]);
+  }, [visible, embedded, refetch]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -143,7 +145,7 @@ const CheckInOut: React.FC<CheckInOutProps> = ({
         text: "End Shift",
         onPress: () => {
           shiftToggle.mutate({ action: "out" });
-          onClose();
+          onClose?.();
         },
       },
     ]);
@@ -155,22 +157,7 @@ const CheckInOut: React.FC<CheckInOutProps> = ({
 
   const displayName = userName?.split(" ")[0] || "User";
 
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.backButton}>
-            <Icon name="arrow-back" type="material" size={24} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Check In/Out</Text>
-          <View style={styles.headerSpacer} />
-        </View>
-
+  const body = (
         <ScrollView
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
@@ -289,6 +276,28 @@ const CheckInOut: React.FC<CheckInOutProps> = ({
             </>
           )}
         </ScrollView>
+  );
+
+  if (embedded) {
+    return <View style={styles.embeddedContainer}>{body}</View>;
+  }
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onClose} style={styles.backButton}>
+            <Icon name="arrow-back" type="material" size={24} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Check In/Out</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+        {body}
       </View>
     </Modal>
   );
@@ -296,6 +305,10 @@ const CheckInOut: React.FC<CheckInOutProps> = ({
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: driverTheme.colors.background.default,
+  },
+  embeddedContainer: {
     flex: 1,
     backgroundColor: driverTheme.colors.background.default,
   },

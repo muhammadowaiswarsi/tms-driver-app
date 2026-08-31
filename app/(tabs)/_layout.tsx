@@ -15,7 +15,10 @@ export default function TabLayout() {
       >
         <Tabs.Screen name="index" options={{ href: null }} />
         <Tabs.Screen name="loads" options={{ href: null }} />
+        <Tabs.Screen name="clock-in" options={{ href: null }} />
+        <Tabs.Screen name="pay" options={{ href: null }} />
         <Tabs.Screen name="messages" options={{ href: null }} />
+        {/* Temporarily hidden — Others screen is not in the tab bar */}
         <Tabs.Screen name="others" options={{ href: null }} />
       </Tabs>
     </>

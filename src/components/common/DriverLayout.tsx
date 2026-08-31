@@ -12,6 +12,7 @@ interface DriverLayoutProps {
   onBackClick?: () => void;
   currentTab?: string;
   hideHeader?: boolean;
+  showLogo?: boolean;
 }
 
 const DriverLayout: React.FC<DriverLayoutProps> = ({
@@ -21,25 +22,24 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({
   onBackClick,
   currentTab,
   hideHeader = false,
+  showLogo = false,
 }) => {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.container, { paddingTop: hideHeader ? 0 : insets.top }]}>
       <View style={styles.wrapper}>
-        
         {!hideHeader && (
           <MobileHeader
             title={title}
             showBackButton={showBackButton}
             onBackClick={onBackClick}
+            showLogo={showLogo}
           />
         )}
 
-        
         <View style={styles.content}>{children}</View>
 
-        
         <BottomNavigation currentTab={currentTab} />
       </View>
     </View>
@@ -49,7 +49,7 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: driverTheme.colors.background.default,
+    backgroundColor: driverTheme.colors.background.paper,
   },
   wrapper: {
     flex: 1,
@@ -62,4 +62,3 @@ const styles = StyleSheet.create({
 });
 
 export default DriverLayout;
-

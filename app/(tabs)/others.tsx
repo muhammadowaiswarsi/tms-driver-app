@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -15,10 +15,10 @@ import DriverLayout from '../../src/components/common/DriverLayout';
 import { useAuth } from '../../src/hooks/useAuth';
 import { driverTheme } from '../../src/theme/driverTheme';
 
-
 const TypedCard = Card as any;
 
-const Others: React.FC = () => {
+/** Restored Others UI — temporarily unused while the screen is hidden from nav. */
+const OthersScreen: React.FC = () => {
   const router = useRouter();
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -38,8 +38,6 @@ const Others: React.FC = () => {
   const handleLogoutConfirm = async () => {
     try {
       setLogoutDialogOpen(false);
-      
-      
       await logoutAuth();
     } catch {
       Alert.alert('Error', 'Failed to logout');
@@ -160,7 +158,6 @@ const Others: React.FC = () => {
   return (
     <DriverLayout title="Others" showBackButton onBackClick={handleBackClick} currentTab="others">
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        
         <TypedCard containerStyle={styles.profileCard}>
           <View style={styles.profileContent}>
             <Avatar
@@ -178,7 +175,6 @@ const Others: React.FC = () => {
           </View>
         </TypedCard>
 
-        
         <TypedCard containerStyle={styles.sectionCard}>
           <Text style={styles.sectionTitle}>PREFERENCES</Text>
           <View style={styles.listContainer}>
@@ -186,7 +182,6 @@ const Others: React.FC = () => {
           </View>
         </TypedCard>
 
-        
         <TypedCard containerStyle={styles.sectionCard}>
           <Text style={styles.sectionTitle}>GENERAL</Text>
           <View style={styles.listContainer}>
@@ -194,7 +189,6 @@ const Others: React.FC = () => {
           </View>
         </TypedCard>
 
-        
         <TypedCard containerStyle={styles.logoutCard}>
           <TouchableOpacity
             style={styles.logoutButton}
@@ -207,14 +201,12 @@ const Others: React.FC = () => {
         </TypedCard>
       </ScrollView>
 
-      
       <CheckInOut
         visible={checkInOutModalOpen}
         onClose={() => setCheckInOutModalOpen(false)}
         userName={userData?.name}
       />
 
-      
       {logoutDialogOpen && (
         <View style={styles.dialogOverlay}>
           <View style={styles.dialogCard}>
@@ -248,7 +240,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 0, 
+    paddingBottom: 0,
   },
   profileCard: {
     borderRadius: 0,
@@ -285,7 +277,7 @@ const styles = StyleSheet.create({
   logoutCard: {
     borderRadius: 0,
     margin: 0,
-    marginBottom: 0, 
+    marginBottom: 0,
     padding: 0,
   },
   sectionTitle: {
@@ -350,7 +342,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 1000,
     paddingHorizontal: driverTheme.spacing.md,
-    paddingBottom: 120, 
+    paddingBottom: 120,
   },
   dialogCard: {
     borderRadius: 16,
@@ -384,4 +376,8 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Others;
+export { OthersScreen };
+
+export default function Others() {
+  return <Redirect href="/(tabs)/loads" />;
+}

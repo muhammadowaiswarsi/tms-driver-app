@@ -758,16 +758,27 @@ const LoadSearch: React.FC = () => {
     if (!driverActiveLoads?.data) {
       return (
         <View style={styles.emptyContainerActive}>
-          <Icon
-            name="help"
-            type="material"
-            size={48}
-            color={driverTheme.colors.text.secondary}
-          />
-          <Text style={styles.emptyTitle}>No Active Load</Text>
+          <View style={styles.emptyIconCircle}>
+            <Icon
+              name="search"
+              type="material"
+              size={40}
+              color={driverTheme.colors.primary.main}
+            />
+          </View>
+          <Text style={styles.emptyTitleCaughtUp}>You&apos;re All Caught Up!</Text>
           <Text style={styles.emptySubtitle}>
-            Check upcoming loads to get started
+            There are no active loads assigned right now.
           </Text>
+          <TouchableOpacity
+            style={styles.seeLoadsButton}
+            onPress={() => handleTabChange(1)}
+            activeOpacity={0.85}
+          >
+            <Icon name="local-shipping" type="material" color="#fff" size={20} />
+            <Text style={styles.seeLoadsButtonText}>See Available Loads</Text>
+            <Icon name="chevron-right" type="material" color="#fff" size={22} />
+          </TouchableOpacity>
         </View>
       );
     }
@@ -1070,9 +1081,13 @@ const LoadSearch: React.FC = () => {
   const headerTitle = driverActiveLoads?.data?.loadNumber
     ? `Load -- ${driverActiveLoads.data.loadNumber}`
     : "Loads";
+  const activeCount = driverActiveLoads?.data ? 1 : 0;
+  const upcomingCount = Array.isArray(driverUpcomingLoads?.data)
+    ? driverUpcomingLoads.data.length
+    : 0;
 
   return (
-    <DriverLayout title={headerTitle} currentTab="loads">
+    <DriverLayout title={headerTitle} currentTab="loads" showLogo>
       <View style={styles.container}>
         
         <View style={styles.tabsContainer}>
@@ -1083,7 +1098,7 @@ const LoadSearch: React.FC = () => {
             <Text
               style={[styles.tabText, currentTab === 0 && styles.activeTabText]}
             >
-              Active
+              Active ({activeCount})
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -1093,7 +1108,7 @@ const LoadSearch: React.FC = () => {
             <Text
               style={[styles.tabText, currentTab === 1 && styles.activeTabText]}
             >
-              Upcoming
+              Upcoming ({upcomingCount})
             </Text>
           </TouchableOpacity>
         </View>
@@ -1631,28 +1646,28 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     flexDirection: "row",
-    backgroundColor: "#cbcbcb",
-    borderRadius: 8,
-    margin: driverTheme.spacing.sm,
+    backgroundColor: "#EEF2F6",
+    borderRadius: 12,
+    margin: driverTheme.spacing.md,
     marginTop: driverTheme.spacing.md,
-    padding: 2,
+    padding: 4,
   },
   tab: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 10,
     alignItems: "center",
-    borderRadius: 6,
+    borderRadius: 10,
   },
   activeTab: {
-    backgroundColor: driverTheme.colors.background.paper,
+    backgroundColor: driverTheme.colors.primary.main,
   },
   tabText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
-    color: driverTheme.colors.background.paper,
+    color: driverTheme.colors.text.secondary,
   },
   activeTabText: {
-    color: driverTheme.colors.text.primary,
+    color: driverTheme.colors.primary.contrastText,
   },
   scrollView: {
     flex: 1,
@@ -1784,6 +1799,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: driverTheme.spacing.xl,
   },
+  emptyIconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#E8F1FC",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
   emptyTitle: {
     fontSize: 20,
     fontWeight: "600",
@@ -1791,11 +1815,38 @@ const styles = StyleSheet.create({
     marginTop: driverTheme.spacing.md,
     marginBottom: driverTheme.spacing.sm,
   },
+  emptyTitleCaughtUp: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: driverTheme.colors.primary.main,
+    marginTop: driverTheme.spacing.md,
+    marginBottom: driverTheme.spacing.sm,
+    textAlign: "center",
+  },
   emptySubtitle: {
     fontSize: 16,
     color: driverTheme.colors.text.disabled,
     textAlign: "center",
     maxWidth: 300,
+  },
+  seeLoadsButton: {
+    marginTop: driverTheme.spacing.lg,
+    backgroundColor: driverTheme.colors.primary.main,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minWidth: 260,
+  },
+  seeLoadsButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+    flex: 1,
+    textAlign: "center",
+    marginHorizontal: 8,
   },
   upcomingCard: {
     borderRadius: 12,

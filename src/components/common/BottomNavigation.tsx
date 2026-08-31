@@ -1,8 +1,9 @@
 import { usePathname, useRouter } from 'expo-router';
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Icon } from 'react-native-elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useGetConversations } from '../../hooks/useMessaging';
 import { driverTheme } from '../../theme/driverTheme';
 
 interface BottomNavigationProps {
@@ -13,73 +14,75 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const { data: conversationsResponse } = useGetConversations({ limit: 100 });
+
+  const unreadCount = useMemo(() => {
+    const conversations = conversationsResponse?.data;
+    if (!Array.isArray(conversations)) return 0;
+    return conversations.reduce(
+      (sum: number, item: { unreadCount?: number }) => sum + (Number(item?.unreadCount) || 0),
+      0,
+    );
+  }, [conversationsResponse]);
 
   const navigationItems = [
     {
       label: 'Loads',
-      icon: 'home',
+      icon: 'local-shipping',
       value: 'loads',
       path: '/(tabs)/loads',
       badgeCount: 0,
     },
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    {
+      label: 'Clock In',
+      icon: 'timer',
+      value: 'clock-in',
+      path: '/(tabs)/clock-in',
+      badgeCount: 0,
+    },
+    {
+      label: 'Pay',
+      icon: 'account-balance-wallet',
+      value: 'pay',
+      path: '/(tabs)/pay',
+      badgeCount: 0,
+    },
     {
       label: 'Messages',
       icon: 'chat-bubble-outline',
       value: 'messages',
       path: '/(tabs)/messages',
-      badgeCount: 0,
+      badgeCount: unreadCount,
     },
-    {
-      label: 'Other',
-      icon: 'more-horiz',
-      value: 'others',
-      path: '/(tabs)/others',
-      badgeCount: 0,
-    },
+    // {
+    //   label: 'More',
+    //   icon: 'menu',
+    //   value: 'others',
+    //   path: '/(tabs)/others',
+    //   badgeCount: 0,
+    // },
   ];
 
   const getCurrentValue = () => {
-    
     if (currentTab) {
       return currentTab;
     }
-    
-    
+
     if (pathname) {
-      
       if (pathname.includes('/loads') || pathname.includes('/load-details')) {
         return 'loads';
+      }
+      if (pathname.includes('/clock-in')) {
+        return 'clock-in';
+      }
+      if (pathname.includes('/pay')) {
+        return 'pay';
       }
       if (pathname.includes('/messages')) {
         return 'messages';
       }
-      if (pathname.includes('/others')) {
-        return 'others';
-      }
-      
-      
-      const currentItem = navigationItems.find((item) => 
-        pathname.includes(item.path) || pathname === item.path
-      );
-      if (currentItem) {
-        return currentItem.value;
-      }
     }
-    
+
     return 'loads';
   };
 
@@ -100,28 +103,31 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
             onPress={() => handleNavigation(item.path)}
             activeOpacity={0.7}
           >
-            <View style={styles.iconContainer}>
-              <Icon
-                name={item.icon}
-                type="material"
-                color={isActive ? driverTheme.colors.primary.main : driverTheme.colors.text.secondary}
-                size={24}
-              />
-              {item.badgeCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{item.badgeCount > 9 ? '9+' : item.badgeCount}</Text>
-                </View>
-              )}
+            <View style={[styles.itemInner, isActive && styles.itemInnerActive]}>
+              <View style={styles.iconContainer}>
+                <Icon
+                  name={item.icon}
+                  type="material"
+                  color={isActive ? driverTheme.colors.primary.main : driverTheme.colors.text.secondary}
+                  size={22}
+                />
+                {item.badgeCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{item.badgeCount > 9 ? '9+' : item.badgeCount}</Text>
+                  </View>
+                )}
+              </View>
+              <Text
+                style={[
+                  styles.label,
+                  { color: isActive ? driverTheme.colors.primary.main : driverTheme.colors.text.secondary },
+                ]}
+                numberOfLines={1}
+              >
+                {item.label}
+              </Text>
+              {isActive && <View style={styles.activeIndicator} />}
             </View>
-            <Text
-              style={[
-                styles.label,
-                { color: isActive ? driverTheme.colors.primary.main : driverTheme.colors.text.secondary },
-              ]}
-            >
-              {item.label}
-            </Text>
-            {isActive && <View style={styles.activeIndicator} />}
           </TouchableOpacity>
         );
       })}
@@ -129,63 +135,88 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
   );
 };
 
-
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     backgroundColor: driverTheme.colors.background.paper,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: driverTheme.colors.divider,
-    minHeight: 80,
+    minHeight: 72,
     paddingBottom: 8,
-    paddingTop: 8,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    paddingTop: 6,
+    paddingHorizontal: 6,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 12,
+      },
+    }),
   },
   navItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
+  },
+  itemInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    minWidth: 56,
+  },
+  itemInnerActive: {
+    backgroundColor: '#E8F1FC',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#1976d2',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.12,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   iconContainer: {
     position: 'relative',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   badge: {
     position: 'absolute',
     top: -6,
-    right: -8,
+    right: -10,
     backgroundColor: driverTheme.colors.error.main,
     borderRadius: 10,
-    minWidth: 18,
-    height: 18,
+    minWidth: 16,
+    height: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 3,
   },
   badgeText: {
     color: driverTheme.colors.error.contrastText,
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 9,
+    fontWeight: '700',
   },
   label: {
     fontSize: 10,
-    fontWeight: '500',
-    marginTop: 2,
+    fontWeight: '600',
+    marginTop: 1,
   },
   activeIndicator: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 2,
+    marginTop: 4,
+    width: 18,
+    height: 3,
+    borderRadius: 2,
     backgroundColor: driverTheme.colors.primary.main,
   },
 });
 
 export default BottomNavigation;
-

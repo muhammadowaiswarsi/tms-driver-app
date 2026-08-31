@@ -94,5 +94,10 @@ export const queryKeys = {
     lists: () => [...queryKeys.drivers.all, 'list'] as const,
     list: (filters: QueryFilters) => [...queryKeys.drivers.lists(), { ...filters }] as const,
   },
+  driverPay: {
+    all: ['driverPay'] as const,
+    summary: () => [...queryKeys.driverPay.all, 'summary'] as const,
+    byLoad: (loadId: string | number) => [...queryKeys.driverPay.all, 'load', loadId] as const,
+  },
 };
 

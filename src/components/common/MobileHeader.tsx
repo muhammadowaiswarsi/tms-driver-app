@@ -1,8 +1,10 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Icon } from 'react-native-elements';
+import { useAuth } from '../../hooks/useAuth';
 import { driverTheme } from '../../theme/driverTheme';
+import BrandLogo from './BrandLogo';
 
 interface MobileHeaderProps {
   title?: string;
@@ -10,16 +12,18 @@ interface MobileHeaderProps {
   onBackClick?: () => void;
   notificationCount?: number;
   subtitle?: string;
+  showLogo?: boolean;
 }
 
 const MobileHeader: React.FC<MobileHeaderProps> = ({
   title = 'Active',
   showBackButton = false,
   onBackClick,
-  notificationCount = 0,
   subtitle,
+  showLogo = false,
 }) => {
   const router = useRouter();
+  const { logout } = useAuth();
 
   const handleBack = () => {
     if (onBackClick) {
@@ -29,20 +33,45 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
     }
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout? You\'ll need to sign in again to access your account.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: () => {
+          logout().catch(() => {
+            Alert.alert('Error', 'Failed to logout');
+          });
+        },
+      },
+    ]);
   };
 
-  const getFormattedDate = () => {
-    const now = new Date();
-    const options: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
-    const date = now.toLocaleDateString('en-US', options);
-    const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-    return `${date} - ${time}`;
-  };
+  const logoutButton = (
+    <TouchableOpacity style={styles.notificationButton} onPress={handleLogout} accessibilityLabel="Logout">
+      <Icon
+        name="logout"
+        type="material"
+        color={driverTheme.colors.text.primary}
+        size={24}
+      />
+    </TouchableOpacity>
+  );
+
+  if (showLogo && !showBackButton) {
+    return (
+      <View style={styles.logoContainer}>
+        <View style={styles.logoToolbar}>
+          <View style={styles.backButton} />
+          <View style={styles.titleContainer}>
+            <BrandLogo />
+          </View>
+          {logoutButton}
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -56,30 +85,12 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
         )}
 
         <View style={styles.titleContainer}>
-          <Text style={styles.title}>{title}</Text>
+          {showLogo ? <BrandLogo compact /> : <Text style={styles.title}>{title}</Text>}
           {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
         </View>
 
-        <TouchableOpacity style={styles.notificationButton}>
-          <Icon
-            name="notifications-none"
-            type="material"
-            color={driverTheme.colors.text.primary}
-            size={24}
-          />
-          {notificationCount > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{notificationCount > 9 ? '9+' : notificationCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        {logoutButton}
       </View>
-      {title === 'Clock In' && (
-        <View style={styles.greetingContainer}>
-          <Text style={styles.greeting}>{getGreeting()}, Tamara!</Text>
-          <Text style={styles.dateTime}>{getFormattedDate()}</Text>
-        </View>
-      )}
     </View>
   );
 };
@@ -92,6 +103,19 @@ const styles = StyleSheet.create({
     elevation: 0,
     shadowOpacity: 0,
   },
+  logoContainer: {
+    backgroundColor: driverTheme.colors.background.paper,
+    paddingTop: driverTheme.spacing.sm,
+    paddingBottom: driverTheme.spacing.md,
+    paddingHorizontal: driverTheme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: driverTheme.colors.divider,
+  },
+  logoToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   toolbar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -102,6 +126,7 @@ const styles = StyleSheet.create({
   backButton: {
     marginRight: driverTheme.spacing.sm,
     padding: driverTheme.spacing.xs,
+    width: 40,
   },
   titleContainer: {
     flex: 1,
@@ -123,40 +148,9 @@ const styles = StyleSheet.create({
     marginLeft: driverTheme.spacing.sm,
     padding: driverTheme.spacing.xs,
     position: 'relative',
-  },
-  badge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: driverTheme.colors.error.main,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  badgeText: {
-    color: driverTheme.colors.error.contrastText,
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  greetingContainer: {
-    paddingHorizontal: driverTheme.spacing.lg,
-    paddingVertical: driverTheme.spacing.md,
-    backgroundColor: driverTheme.colors.background.paper,
-  },
-  greeting: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: driverTheme.colors.text.primary,
-    marginBottom: 4,
-  },
-  dateTime: {
-    fontSize: 14,
-    color: driverTheme.colors.text.secondary,
+    width: 40,
+    alignItems: 'flex-end',
   },
 });
 
 export default MobileHeader;
-

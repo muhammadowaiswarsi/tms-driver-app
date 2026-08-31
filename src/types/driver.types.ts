@@ -110,6 +110,34 @@ export interface NavigationItem {
   active?: boolean;
 }
 
+export interface DriverPayLineItem {
+  id: string;
+  label: string;
+  detail?: string;
+  amount: number;
+}
+
+export interface DriverPayLoadGroup {
+  loadId: string;
+  loadNumber: string;
+  fromLocation: string;
+  toLocation: string;
+  date?: string | Date | null;
+  miles: number;
+  total: number;
+  lineItems: DriverPayLineItem[];
+}
+
+export interface DriverPaySummary {
+  netEarnings: number;
+  gross: number;
+  miles: number;
+  loadCount: number;
+  changePercent: number | null;
+  loadsThisWeek: number;
+  loads: DriverPayLoadGroup[];
+}
+
 export interface ShiftStatus {
   isCheckedIn: boolean;
   isOnBreak: boolean;
