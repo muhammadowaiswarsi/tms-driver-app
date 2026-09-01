@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -41,7 +42,7 @@ import { driverTheme } from "../../src/theme/driverTheme";
 import { Event } from "../../src/types/driver.types";
 
 
-const TypedCard = Card as any;
+const EMPTY_LOADS_SEARCH = require("../../assets/images/empty-loads-search.png");
 
 const ORGANIZATION_DOCUMENT_OPTIONS = [
   {
@@ -759,11 +760,10 @@ const LoadSearch: React.FC = () => {
       return (
         <View style={styles.emptyContainerActive}>
           <View style={styles.emptyIconCircle}>
-            <Icon
-              name="search"
-              type="material"
-              size={40}
-              color={driverTheme.colors.primary.main}
+            <Image
+              source={EMPTY_LOADS_SEARCH}
+              style={styles.emptySearchImage}
+              resizeMode="contain"
             />
           </View>
           <Text style={styles.emptyTitleCaughtUp}>You&apos;re All Caught Up!</Text>
@@ -998,16 +998,16 @@ const LoadSearch: React.FC = () => {
     >
       {!driverUpcomingLoads?.data || driverUpcomingLoads?.data.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Icon
-            name="local-shipping"
-            type="material"
-            size={80}
-            color={driverTheme.colors.grey[400]}
-          />
-          <Text style={styles.emptyTitle}>No Upcoming Loads</Text>
+          <View style={styles.emptyIconCircle}>
+            <Image
+              source={EMPTY_LOADS_SEARCH}
+              style={styles.emptySearchImage}
+              resizeMode="contain"
+            />
+          </View>
+          <Text style={styles.emptyTitleCaughtUp}>You&apos;re All Caught Up!</Text>
           <Text style={styles.emptySubtitle}>
-            You don&apos;t have any upcoming loads at the moment. New loads will
-            appear here when they become available.
+            There are no upcoming loads assigned right now.
           </Text>
         </View>
       ) : (
@@ -1788,6 +1788,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   emptyContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: driverTheme.spacing.xl,
@@ -1800,13 +1801,17 @@ const styles = StyleSheet.create({
     padding: driverTheme.spacing.xl,
   },
   emptyIconCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: "#E8F1FC",
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "#E8F4FF",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
+    marginBottom: 8,
+  },
+  emptySearchImage: {
+    width: 168,
+    height: 156,
   },
   emptyTitle: {
     fontSize: 20,
@@ -1818,27 +1823,29 @@ const styles = StyleSheet.create({
   emptyTitleCaughtUp: {
     fontSize: 22,
     fontWeight: "700",
-    color: driverTheme.colors.primary.main,
+    color: "#1B365D",
     marginTop: driverTheme.spacing.md,
     marginBottom: driverTheme.spacing.sm,
     textAlign: "center",
   },
   emptySubtitle: {
-    fontSize: 16,
-    color: driverTheme.colors.text.disabled,
+    fontSize: 15,
+    color: driverTheme.colors.text.secondary,
     textAlign: "center",
     maxWidth: 300,
+    lineHeight: 22,
   },
   seeLoadsButton: {
     marginTop: driverTheme.spacing.lg,
     backgroundColor: driverTheme.colors.primary.main,
-    borderRadius: 12,
+    borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 18,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    minWidth: 260,
+    width: "100%",
+    maxWidth: 320,
   },
   seeLoadsButtonText: {
     color: "#fff",
