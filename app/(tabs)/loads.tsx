@@ -759,13 +759,11 @@ const LoadSearch: React.FC = () => {
     if (!driverActiveLoads?.data) {
       return (
         <View style={styles.emptyContainerActive}>
-          <View style={styles.emptyIconCircle}>
-            <Image
-              source={EMPTY_LOADS_SEARCH}
-              style={styles.emptySearchImage}
-              resizeMode="contain"
-            />
-          </View>
+          <Image
+            source={EMPTY_LOADS_SEARCH}
+            style={styles.emptySearchImage}
+            resizeMode="contain"
+          />
           <Text style={styles.emptyTitleCaughtUp}>You&apos;re All Caught Up!</Text>
           <Text style={styles.emptySubtitle}>
             There are no active loads assigned right now.
@@ -998,13 +996,11 @@ const LoadSearch: React.FC = () => {
     >
       {!driverUpcomingLoads?.data || driverUpcomingLoads?.data.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <View style={styles.emptyIconCircle}>
-            <Image
-              source={EMPTY_LOADS_SEARCH}
-              style={styles.emptySearchImage}
-              resizeMode="contain"
-            />
-          </View>
+          <Image
+            source={EMPTY_LOADS_SEARCH}
+            style={styles.emptySearchImage}
+            resizeMode="contain"
+          />
           <Text style={styles.emptyTitleCaughtUp}>You&apos;re All Caught Up!</Text>
           <Text style={styles.emptySubtitle}>
             There are no upcoming loads assigned right now.
@@ -1800,18 +1796,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: driverTheme.spacing.xl,
   },
-  emptyIconCircle: {
+  emptySearchImage: {
     width: 200,
     height: 200,
-    borderRadius: 100,
-    backgroundColor: "#E8F4FF",
-    alignItems: "center",
-    justifyContent: "center",
     marginBottom: 8,
-  },
-  emptySearchImage: {
-    width: 168,
-    height: 156,
   },
   emptyTitle: {
     fontSize: 20,

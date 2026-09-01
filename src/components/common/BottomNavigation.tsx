@@ -1,7 +1,6 @@
 import { usePathname, useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Icon } from 'react-native-elements';
+import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGetConversations } from '../../hooks/useMessaging';
 import { driverTheme } from '../../theme/driverTheme';
@@ -9,6 +8,13 @@ import { driverTheme } from '../../theme/driverTheme';
 interface BottomNavigationProps {
   currentTab?: string;
 }
+
+const NAV_ICONS = {
+  loads: require('../../../assets/images/nav/loads.png'),
+  'clock-in': require('../../../assets/images/nav/clock-in.png'),
+  pay: require('../../../assets/images/nav/pay.png'),
+  messages: require('../../../assets/images/nav/messages.png'),
+} as const;
 
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
   const router = useRouter();
@@ -28,35 +34,30 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
   const navigationItems = [
     {
       label: 'Loads',
-      icon: 'local-shipping',
       value: 'loads',
       path: '/(tabs)/loads',
       badgeCount: 0,
     },
     {
       label: 'Clock In',
-      icon: 'timer',
       value: 'clock-in',
       path: '/(tabs)/clock-in',
       badgeCount: 0,
     },
     {
       label: 'Pay',
-      icon: 'account-balance-wallet',
       value: 'pay',
       path: '/(tabs)/pay',
       badgeCount: 0,
     },
     {
       label: 'Messages',
-      icon: 'chat-bubble-outline',
       value: 'messages',
       path: '/(tabs)/messages',
       badgeCount: unreadCount,
     },
     // {
     //   label: 'More',
-    //   icon: 'menu',
     //   value: 'others',
     //   path: '/(tabs)/others',
     //   badgeCount: 0,
@@ -96,6 +97,10 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
     <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       {navigationItems.map((item) => {
         const isActive = currentValue === item.value;
+        const iconColor = isActive
+          ? driverTheme.colors.primary.main
+          : driverTheme.colors.text.secondary;
+
         return (
           <TouchableOpacity
             key={item.value}
@@ -105,11 +110,10 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
           >
             <View style={[styles.itemInner, isActive && styles.itemInnerActive]}>
               <View style={styles.iconContainer}>
-                <Icon
-                  name={item.icon}
-                  type="material"
-                  color={isActive ? driverTheme.colors.primary.main : driverTheme.colors.text.secondary}
-                  size={22}
+                <Image
+                  source={NAV_ICONS[item.value as keyof typeof NAV_ICONS]}
+                  style={[styles.navIcon, { tintColor: iconColor }]}
+                  resizeMode="contain"
                 />
                 {item.badgeCount > 0 && (
                   <View style={styles.badge}>
@@ -118,10 +122,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
                 )}
               </View>
               <Text
-                style={[
-                  styles.label,
-                  { color: isActive ? driverTheme.colors.primary.main : driverTheme.colors.text.secondary },
-                ]}
+                style={[styles.label, { color: iconColor }]}
                 numberOfLines={1}
               >
                 {item.label}
@@ -187,6 +188,10 @@ const styles = StyleSheet.create({
   iconContainer: {
     position: 'relative',
     marginBottom: 2,
+  },
+  navIcon: {
+    width: 24,
+    height: 24,
   },
   badge: {
     position: 'absolute',
