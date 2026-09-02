@@ -1086,7 +1086,8 @@ const LoadSearch: React.FC = () => {
     <DriverLayout title={headerTitle} currentTab="loads" showLogo>
       <View style={styles.container}>
         
-        <View style={styles.tabsContainer}>
+        <View style={styles.tabsWrap}>
+          <View style={styles.tabsContainer}>
           <TouchableOpacity
             style={[styles.tab, currentTab === 0 && styles.activeTab]}
             onPress={() => handleTabChange(0)}
@@ -1107,6 +1108,7 @@ const LoadSearch: React.FC = () => {
               Upcoming ({upcomingCount})
             </Text>
           </TouchableOpacity>
+          </View>
         </View>
 
         
@@ -1640,30 +1642,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: driverTheme.colors.background.default,
   },
+  tabsWrap: {
+    alignItems: "center",
+    marginHorizontal: driverTheme.spacing.md,
+    marginTop: driverTheme.spacing.md,
+    marginBottom: driverTheme.spacing.sm,
+  },
   tabsContainer: {
     flexDirection: "row",
-    backgroundColor: "#EEF2F6",
-    borderRadius: 12,
-    margin: driverTheme.spacing.md,
-    marginTop: driverTheme.spacing.md,
+    width: "100%",
+    maxWidth: 380,
+    backgroundColor: "#fff",
+    borderRadius: 999,
     padding: 4,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8,
     alignItems: "center",
-    borderRadius: 10,
+    borderRadius: 999,
   },
   activeTab: {
-    backgroundColor: driverTheme.colors.primary.main,
+    backgroundColor: "#0066FF",
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
-    color: driverTheme.colors.text.secondary,
+    color: "#4B5563",
   },
   activeTabText: {
-    color: driverTheme.colors.primary.contrastText,
+    color: "#fff",
   },
   scrollView: {
     flex: 1,

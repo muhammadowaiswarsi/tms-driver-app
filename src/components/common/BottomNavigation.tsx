@@ -9,6 +9,9 @@ interface BottomNavigationProps {
   currentTab?: string;
 }
 
+const ACTIVE_BLUE = "#0066FF";
+const INACTIVE_GRAY = "#6B7280";
+
 const NAV_ICONS = {
   loads: require('../../../assets/images/nav/loads.png'),
   'clock-in': require('../../../assets/images/nav/clock-in.png'),
@@ -94,96 +97,117 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
   const currentValue = getCurrentValue();
 
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-      {navigationItems.map((item) => {
-        const isActive = currentValue === item.value;
-        const iconColor = isActive
-          ? driverTheme.colors.primary.main
-          : driverTheme.colors.text.secondary;
+    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      <View style={styles.barBg} />
+      <View style={styles.row}>
+        {navigationItems.map((item) => {
+          const isActive = currentValue === item.value;
+          const iconColor = isActive ? ACTIVE_BLUE : INACTIVE_GRAY;
 
-        return (
-          <TouchableOpacity
-            key={item.value}
-            style={styles.navItem}
-            onPress={() => handleNavigation(item.path)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.itemInner, isActive && styles.itemInnerActive]}>
-              <View style={styles.iconContainer}>
-                <Image
-                  source={NAV_ICONS[item.value as keyof typeof NAV_ICONS]}
-                  style={[styles.navIcon, { tintColor: iconColor }]}
-                  resizeMode="contain"
-                />
-                {item.badgeCount > 0 && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{item.badgeCount > 9 ? '9+' : item.badgeCount}</Text>
-                  </View>
-                )}
+          return (
+            <TouchableOpacity
+              key={item.value}
+              style={[styles.navItem, isActive && styles.navItemActive]}
+              onPress={() => handleNavigation(item.path)}
+              activeOpacity={0.7}
+            >
+              {isActive && <View style={styles.activeCap} pointerEvents="none" />}
+              <View style={styles.itemInner}>
+                <View style={styles.iconContainer}>
+                  <Image
+                    source={NAV_ICONS[item.value as keyof typeof NAV_ICONS]}
+                    style={[styles.navIcon, { tintColor: iconColor }]}
+                    resizeMode="contain"
+                  />
+                  {item.badgeCount > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{item.badgeCount > 9 ? '9+' : item.badgeCount}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text
+                  style={[
+                    styles.label,
+                    { color: iconColor, fontWeight: isActive ? '700' : '500' },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {item.label}
+                </Text>
+                {isActive && <View style={styles.activeIndicator} />}
               </View>
-              <Text
-                style={[styles.label, { color: iconColor }]}
-                numberOfLines={1}
-              >
-                {item.label}
-              </Text>
-              {isActive && <View style={styles.activeIndicator} />}
-            </View>
-          </TouchableOpacity>
-        );
-      })}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    backgroundColor: driverTheme.colors.background.paper,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: driverTheme.colors.divider,
-    minHeight: 72,
-    paddingBottom: 8,
-    paddingTop: 6,
-    paddingHorizontal: 6,
+  wrap: {
+    width: '100%',
+    backgroundColor: 'transparent',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
+        shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.08,
-        shadowRadius: 6,
+        shadowRadius: 10,
       },
       android: {
         elevation: 12,
       },
     }),
   },
+  barBg: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    top: 12,
+    backgroundColor: '#fff',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    width: '100%',
+  },
   navItem: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    height: 64,
+    paddingTop: 8,
+  },
+  navItemActive: {
+    height: 76,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+    zIndex: 2,
+    overflow: 'visible',
+  },
+  activeCap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 14,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderBottomWidth: 0,
+    borderColor: ACTIVE_BLUE,
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+    backgroundColor: '#fff',
   },
   itemInner: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 14,
-    minWidth: 56,
-  },
-  itemInnerActive: {
-    backgroundColor: '#E8F1FC',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#1976d2',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.12,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    justifyContent: 'flex-start',
+    paddingBottom: 8,
+    paddingHorizontal: 4,
   },
   iconContainer: {
     position: 'relative',
@@ -216,11 +240,11 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   activeIndicator: {
-    marginTop: 4,
-    width: 18,
-    height: 3,
+    marginTop: 6,
+    width: 22,
+    height: 4,
     borderRadius: 2,
-    backgroundColor: driverTheme.colors.primary.main,
+    backgroundColor: ACTIVE_BLUE,
   },
 });
 
