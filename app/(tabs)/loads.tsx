@@ -42,6 +42,8 @@ import { driverTheme } from "../../src/theme/driverTheme";
 import { Event } from "../../src/types/driver.types";
 
 
+const TypedCard = Card as any;
+
 const EMPTY_LOADS_SEARCH = require("../../assets/images/empty-loads-search.png");
 
 const ORGANIZATION_DOCUMENT_OPTIONS = [
@@ -1074,16 +1076,13 @@ const LoadSearch: React.FC = () => {
     </ScrollView>
   );
 
-  const headerTitle = driverActiveLoads?.data?.loadNumber
-    ? `Load -- ${driverActiveLoads.data.loadNumber}`
-    : "Loads";
   const activeCount = driverActiveLoads?.data ? 1 : 0;
   const upcomingCount = Array.isArray(driverUpcomingLoads?.data)
     ? driverUpcomingLoads.data.length
     : 0;
 
   return (
-    <DriverLayout title={headerTitle} currentTab="loads" showLogo>
+    <DriverLayout currentTab="loads">
       <View style={styles.container}>
         
         <View style={styles.tabsWrap}>

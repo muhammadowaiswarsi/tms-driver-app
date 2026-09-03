@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "start": "NODE_OPTIONS='--require ./scripts/node-polyfills.cjs' expo start",
+    "build:android": "npx expo run:android",
+    "build:ios": "npx expo run:ios",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "NODE_OPTIONS='--require ./scripts/node-polyfills.cjs' expo start --android",
     "ios": "NODE_OPTIONS='--require ./scripts/node-polyfills.cjs' expo start --ios",

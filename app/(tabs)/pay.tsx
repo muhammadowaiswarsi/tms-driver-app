@@ -139,7 +139,7 @@ const Pay: React.FC = () => {
   };
 
   return (
-    <DriverLayout showLogo currentTab="pay">
+    <DriverLayout currentTab="pay">
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}

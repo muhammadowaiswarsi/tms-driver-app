@@ -8,7 +8,7 @@ export default function ClockInScreen() {
   const { userData } = authState || {};
 
   return (
-    <DriverLayout title="Check In/Out" currentTab="clock-in">
+    <DriverLayout currentTab="clock-in">
       <CheckInOut embedded userName={userData?.name} />
     </DriverLayout>
   );

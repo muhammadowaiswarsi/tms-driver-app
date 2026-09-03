@@ -1,26 +1,20 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Icon } from 'react-native-elements';
 import { useAuth } from '../../hooks/useAuth';
 import { driverTheme } from '../../theme/driverTheme';
 import BrandLogo from './BrandLogo';
 
 interface MobileHeaderProps {
-  title?: string;
   showBackButton?: boolean;
   onBackClick?: () => void;
   notificationCount?: number;
-  subtitle?: string;
-  showLogo?: boolean;
 }
 
 const MobileHeader: React.FC<MobileHeaderProps> = ({
-  title = 'Active',
   showBackButton = false,
   onBackClick,
-  subtitle,
-  showLogo = false,
 }) => {
   const router = useRouter();
   const { logout } = useAuth();
@@ -59,7 +53,7 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
     </TouchableOpacity>
   );
 
-  if (showLogo && !showBackButton) {
+  if (!showBackButton) {
     return (
       <View style={styles.logoContainer}>
         <View style={styles.logoToolbar}>
@@ -76,17 +70,12 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.toolbar}>
-        {showBackButton ? (
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Icon name="arrow-back" type="material" color={driverTheme.colors.text.primary} size={24} />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.backButton} />
-        )}
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <Icon name="arrow-back" type="material" color={driverTheme.colors.text.primary} size={24} />
+        </TouchableOpacity>
 
         <View style={styles.titleContainer}>
-          {showLogo ? <BrandLogo compact /> : <Text style={styles.title}>{title}</Text>}
-          {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+          <BrandLogo compact />
         </View>
 
         {logoutButton}
@@ -131,18 +120,6 @@ const styles = StyleSheet.create({
   titleContainer: {
     flex: 1,
     alignItems: 'center',
-  },
-  title: {
-    textAlign: 'center',
-    fontSize: driverTheme.typography.h6.fontSize,
-    fontWeight: '600',
-    color: driverTheme.colors.text.primary,
-  },
-  subtitle: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: driverTheme.colors.text.secondary,
-    marginTop: 2,
   },
   notificationButton: {
     marginLeft: driverTheme.spacing.sm,

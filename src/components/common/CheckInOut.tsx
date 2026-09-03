@@ -294,7 +294,6 @@ const CheckInOut: React.FC<CheckInOutProps> = ({
           <TouchableOpacity onPress={onClose} style={styles.backButton}>
             <Icon name="arrow-back" type="material" size={24} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Check In/Out</Text>
           <View style={styles.headerSpacer} />
         </View>
         {body}
@@ -322,12 +321,6 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginRight: driverTheme.spacing.md,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: driverTheme.colors.text.primary,
-    flex: 1,
   },
   headerSpacer: {
     width: 40,

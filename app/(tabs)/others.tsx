@@ -59,7 +59,7 @@ const OthersScreen: React.FC = () => {
     },
     {
       id: 'checkInOut',
-      title: 'Check In/Out',
+      title: 'Clock In',
       icon: 'access-time',
       type: 'navigation',
       action: () => setCheckInOutModalOpen(true),
@@ -156,7 +156,7 @@ const OthersScreen: React.FC = () => {
   );
 
   return (
-    <DriverLayout title="Others" showBackButton onBackClick={handleBackClick} currentTab="others">
+    <DriverLayout showBackButton onBackClick={handleBackClick} currentTab="others">
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <TypedCard containerStyle={styles.profileCard}>
           <View style={styles.profileContent}>

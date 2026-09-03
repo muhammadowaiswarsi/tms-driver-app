@@ -64,7 +64,6 @@ const LoadDetails: React.FC = () => {
 
   return (
     <DriverLayout
-      title="Load Details"
       showBackButton
       onBackClick={handleBackClick}
     >

@@ -7,22 +7,18 @@ import MobileHeader from './MobileHeader';
 
 interface DriverLayoutProps {
   children: React.ReactNode;
-  title?: string;
   showBackButton?: boolean;
   onBackClick?: () => void;
   currentTab?: string;
   hideHeader?: boolean;
-  showLogo?: boolean;
 }
 
 const DriverLayout: React.FC<DriverLayoutProps> = ({
   children,
-  title,
   showBackButton,
   onBackClick,
   currentTab,
   hideHeader = false,
-  showLogo = false,
 }) => {
   const insets = useSafeAreaInsets();
 
@@ -31,10 +27,8 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({
       <View style={styles.wrapper}>
         {!hideHeader && (
           <MobileHeader
-            title={title}
             showBackButton={showBackButton}
             onBackClick={onBackClick}
-            showLogo={showLogo}
           />
         )}
 

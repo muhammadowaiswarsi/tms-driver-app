@@ -602,12 +602,10 @@ const Messages: React.FC = () => {
 
   return (
     <DriverLayout
-      title={selectedConversation ? "" : "Messages"}
       showBackButton={false}
       onBackClick={handleBackClick}
       currentTab="messages"
       hideHeader={!!selectedConversation}
-      showLogo={!selectedConversation}
     >
       <KeyboardAvoidingView
         style={styles.container}
