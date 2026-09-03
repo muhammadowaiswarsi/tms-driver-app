@@ -46,18 +46,6 @@ const PERIODS = [
 
 type PayPeriod = (typeof PERIODS)[number]['id'];
 
-const splitLineItem = (item: DriverPayLoadGroup['lineItems'][number]) => {
-  const raw = String(item.label || 'Pay');
-  const paren = raw.match(/^(.*?)\s*\((.*)\)\s*$/);
-  if (paren) {
-    return { label: paren[1], detail: item.detail || paren[2] };
-  }
-  if (item.detail) {
-    return { label: raw, detail: item.detail };
-  }
-  return { label: raw, detail: '' };
-};
-
 const Pay: React.FC = () => {
   const [period, setPeriod] = useState<PayPeriod>('week');
   const { data, isLoading, refetch, isRefetching } = useDriverPaySummary(period);
@@ -124,13 +112,11 @@ const Pay: React.FC = () => {
           <View style={styles.breakdown}>
             <Text style={styles.breakdownTitle}>Driver Pay Breakdown</Text>
             {(load.lineItems || []).map((item) => {
-              const { label, detail } = splitLineItem(item);
               const isDeduction = item.amount < 0;
               return (
                 <View key={item.id} style={styles.breakdownRow}>
                   <View style={styles.breakdownCopy}>
-                    <Text style={styles.breakdownLabel}>{label}</Text>
-                    {!!detail && <Text style={styles.breakdownDetail}>{detail}</Text>}
+                    <Text style={styles.breakdownLabel}>{item.label || 'Driver Pay'}</Text>
                   </View>
                   <Text style={[styles.breakdownAmount, isDeduction && styles.deductionAmount]}>
                     {formatMoney(item.amount)}
