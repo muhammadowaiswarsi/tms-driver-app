@@ -115,6 +115,7 @@ export interface DriverPayLineItem {
   label: string;
   detail?: string;
   amount: number;
+  kind?: 'pay' | 'expense';
 }
 
 export interface DriverPayLoadGroup {
@@ -124,7 +125,10 @@ export interface DriverPayLoadGroup {
   toLocation: string;
   date?: string | Date | null;
   miles: number;
+  routingStops?: string[];
   total: number;
+  payTotal?: number;
+  expenseTotal?: number;
   lineItems: DriverPayLineItem[];
 }
 

@@ -31,6 +31,8 @@ const formatDate = (value?: string | Date | null) => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
+const formatMiles = (miles?: number) => `${(Number(miles) || 0).toFixed(2)} mi`;
+
 const formatRoute = (fromLocation?: string, toLocation?: string) => {
   const from = (fromLocation || '').trim();
   const to = (toLocation || '').trim();
@@ -75,7 +77,7 @@ const Pay: React.FC = () => {
 
   const renderLoadCard = (load: DriverPayLoadGroup) => {
     const expanded = expandedLoadId === load.loadId;
-    const milesLabel = `${Math.round(Number(load.miles) || 0)} mi`;
+    const milesLabel = formatMiles(load.miles);
     const meta = [load.loadNumber, formatDate(load.date), milesLabel].filter(Boolean).join(' · ');
 
     return (
@@ -196,7 +198,7 @@ const Pay: React.FC = () => {
             <View style={styles.statDivider} />
             <View style={styles.statBlock}>
               <Text style={styles.statLabel}>Miles</Text>
-              <Text style={styles.statValue}>{Math.round(summary.miles)} mi</Text>
+              <Text style={styles.statValue}>{formatMiles(summary.miles)}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statBlock}>
