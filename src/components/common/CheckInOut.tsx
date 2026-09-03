@@ -329,6 +329,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
     padding: driverTheme.spacing.xl,
     alignItems: "center",
     width: "100%",
