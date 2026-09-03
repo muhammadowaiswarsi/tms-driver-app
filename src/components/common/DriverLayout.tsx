@@ -43,7 +43,7 @@ const DriverLayout: React.FC<DriverLayoutProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: driverTheme.colors.background.paper,
+    backgroundColor: driverTheme.colors.background.default,
   },
   wrapper: {
     flex: 1,

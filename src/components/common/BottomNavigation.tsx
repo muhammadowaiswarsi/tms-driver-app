@@ -97,9 +97,11 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
   const currentValue = getCurrentValue();
 
   return (
-    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-      <View style={styles.barBg} />
-      <View style={styles.row}>
+    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <View style={styles.bar}>
+        <View style={styles.protrusionBg} pointerEvents="none" />
+        <View style={styles.barBg} />
+        <View style={styles.row}>
         {navigationItems.map((item) => {
           const isActive = currentValue === item.value;
           const iconColor = isActive ? ACTIVE_BLUE : INACTIVE_GRAY;
@@ -139,6 +141,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
             </TouchableOpacity>
           );
         })}
+        </View>
       </View>
     </View>
   );
@@ -147,31 +150,47 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ currentTab }) => {
 const styles = StyleSheet.create({
   wrap: {
     width: '100%',
-    backgroundColor: 'transparent',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 12,
-      },
-    }),
+    backgroundColor: driverTheme.colors.background.default,
+    overflow: 'visible',
+  },
+  bar: {
+    width: '100%',
+    overflow: 'visible',
+    minHeight: 82,
+  },
+  protrusionBg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 18,
+    backgroundColor: driverTheme.colors.background.default,
   },
   barBg: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    top: 12,
+    height: 64,
     backgroundColor: '#fff',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0F2850',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   row: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     width: '100%',
+    // keeps tab content above the elevated bar background on Android
+    ...Platform.select({ android: { elevation: 9 }, default: {} }),
   },
   navItem: {
     flex: 1,
@@ -181,26 +200,23 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   navItemActive: {
-    height: 76,
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
+    height: 82,
     zIndex: 2,
-    overflow: 'visible',
+    backgroundColor: 'transparent',
   },
   activeCap: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 14,
+    height: 20,
     borderTopWidth: 2,
     borderLeftWidth: 2,
     borderRightWidth: 2,
     borderBottomWidth: 0,
     borderColor: ACTIVE_BLUE,
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
     backgroundColor: '#fff',
   },
   itemInner: {

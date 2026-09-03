@@ -133,7 +133,7 @@ export interface DriverPaySummary {
   gross: number;
   miles: number;
   loadCount: number;
-  changePercent: number | null;
+  changePercent: number;
   loadsThisWeek: number;
   loads: DriverPayLoadGroup[];
 }

@@ -24,7 +24,11 @@ import { useAllDriversByCompany } from "../../src/hooks/useDrivers";
 import {
   useCreateConservation,
   useGetConversations,
+  useGetGroupConversations,
+  useGetGroupMessages,
   useGetMessages,
+  useMarkGroupConversationRead,
+  useSendGroupMessage,
   useSendMessage,
 } from "../../src/hooks/useMessaging";
 import { useWebSocketMessaging } from "../../src/hooks/useWebSocketMessaging";
@@ -57,6 +61,7 @@ interface Message {
   attachmentUrl?: string;
   attachmentName?: string;
   attachmentMimeType?: string;
+  senderName?: string;
 }
 
 type PendingAttachment = {
@@ -73,14 +78,44 @@ interface User {
   email?: string;
 }
 
+interface GroupConversation {
+  id: string | number;
+  name?: string;
+  title?: string;
+  lastMessagePreview?: string;
+  lastMessageAt?: string;
+  unreadCount?: number;
+}
+
+type MessagingTab = "direct" | "groups";
+
+const extractList = (response: any) => {
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.data?.data)) return response.data.data;
+  if (Array.isArray(response)) return response;
+  return [];
+};
+
+const getGroupConversationName = (conversation: GroupConversation) =>
+  conversation?.name || conversation?.title || "Untitled Group";
+
+const getGroupConversationPreview = (conversation: GroupConversation) =>
+  conversation?.lastMessagePreview || "No messages yet";
+
+const getGroupConversationTime = (conversation: GroupConversation) =>
+  conversation?.lastMessageAt || null;
+
 const CHAT_LIGHT_BLUE = "#f0f7ff";
 const CHAT_LIGHT_BLUE_BORDER = "#B7CAE9";
 const CHAT_LIGHT_BLUE_SOFT = "#f0f7ff";
 
 const Messages: React.FC = () => {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<MessagingTab>("direct");
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
+  const [selectedGroupConversation, setSelectedGroupConversation] =
+    useState<GroupConversation | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [message, setMessage] = useState("");
   const [openNewMessageDialog, setOpenNewMessageDialog] = useState(false);
@@ -110,7 +145,19 @@ const Messages: React.FC = () => {
     limit: 100,
   });
 
-  
+  const {
+    data: groupConversationsResponse,
+    isLoading: isLoadingGroupConversations,
+    refetch: refetchGroupConversations,
+  } = useGetGroupConversations({
+    limit: 100,
+  });
+
+  const {
+    data: groupMessagesResponse,
+    isLoading: isLoadingGroupMessages,
+    refetch: refetchGroupMessages,
+  } = useGetGroupMessages(selectedGroupConversation?.id, { limit: 50 });
   const {
     isConnected,
     joinConversation,
@@ -252,8 +299,36 @@ const Messages: React.FC = () => {
     },
   });
 
+  const sendGroupMessageMutation = useSendGroupMessage({
+    onSuccess: () => {
+      refetchGroupMessages();
+      refetchGroupConversations();
+      setMessage("");
+      setPendingAttachment(null);
+    },
+  });
+
+  const markGroupRead = useMarkGroupConversationRead({
+    successMessage: false,
+  });
+
   const messages: Message[] = messagesResponse?.data || [];
   const conversations: Conversation[] = conversationsResponse?.data || [];
+  const groupConversations: GroupConversation[] = extractList(groupConversationsResponse);
+  const groupMessages: Message[] = extractList(groupMessagesResponse).map((msg: any) => ({
+    ...msg,
+    content: msg.content || msg.message || msg.text || "",
+    sentAt: msg.sentAt || msg.createdAt,
+    isFromMe:
+      typeof msg.isFromMe === "boolean"
+        ? msg.isFromMe
+        : msg.senderId === authState?.userData?.id,
+    senderName:
+      msg.senderName ||
+      msg.sender?.name ||
+      [msg.sender?.firstName, msg.sender?.lastName].filter(Boolean).join(" ").trim() ||
+      "Unknown",
+  }));
   const companyUsers: User[] = usersResponse?.data || [];
 
   
@@ -262,6 +337,26 @@ const Messages: React.FC = () => {
       refetchMessages();
     }
   }, [selectedConversation?.id, refetchMessages]);
+
+  useEffect(() => {
+    if (selectedGroupConversation?.id) {
+      refetchGroupMessages();
+      markGroupRead.mutate({
+        id: `${selectedGroupConversation.id}/read`,
+        data: {},
+      });
+    }
+  }, [selectedGroupConversation?.id, refetchGroupMessages]);
+
+  useEffect(() => {
+    if (activeTab === "groups") {
+      setSelectedConversation(null);
+    } else {
+      setSelectedGroupConversation(null);
+    }
+    setMessage("");
+    setPendingAttachment(null);
+  }, [activeTab]);
 
   
   useEffect(() => {
@@ -308,8 +403,19 @@ const Messages: React.FC = () => {
     }
   }, [messages.length]);
 
+  useEffect(() => {
+    if (groupMessages.length > 0 && messagesEndRef.current) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [groupMessages.length]);
+
   const handleBackClick = () => {
-    if (selectedConversation) {
+    if (activeTab === "groups" && selectedGroupConversation) {
+      setSelectedGroupConversation(null);
+      setMessage("");
+    } else if (selectedConversation) {
       setSelectedConversation(null);
     } else {
       router.push("/(tabs)/loads");
@@ -318,6 +424,10 @@ const Messages: React.FC = () => {
 
   const handleConversationSelect = (conversation: Conversation) => {
     setSelectedConversation(conversation);
+  };
+
+  const handleGroupConversationSelect = (conversation: GroupConversation) => {
+    setSelectedGroupConversation(conversation);
   };
 
   const clearPendingAttachment = () => {
@@ -356,7 +466,27 @@ const Messages: React.FC = () => {
   };
 
   const handleSendMessage = () => {
-    if (!canSendChatMessage(message, Boolean(pendingAttachment)) || !selectedConversation) return;
+    if (!canSendChatMessage(message, Boolean(pendingAttachment))) return;
+
+    const attachmentFields = pendingAttachment
+      ? {
+          type: pendingAttachment.type,
+          attachmentUrl: pendingAttachment.attachmentUrl,
+          attachmentName: pendingAttachment.attachmentName,
+          attachmentMimeType: pendingAttachment.attachmentMimeType,
+        }
+      : { type: "TEXT" as const };
+
+    if (activeTab === "groups" && selectedGroupConversation) {
+      sendGroupMessageMutation.mutate({
+        conversationId: selectedGroupConversation.id,
+        content: message.trim(),
+        ...attachmentFields,
+      });
+      return;
+    }
+
+    if (!selectedConversation) return;
 
     const payload = {
       conversationId: selectedConversation.id,
@@ -495,11 +625,55 @@ const Messages: React.FC = () => {
     </TouchableOpacity>
   );
 
+  const renderGroupConversationItem = ({ item }: { item: GroupConversation }) => (
+    <TouchableOpacity
+      style={styles.conversationItem}
+      onPress={() => handleGroupConversationSelect(item)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.avatarContainer}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {getInitials(getGroupConversationName(item))}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.conversationContent}>
+        <View style={styles.conversationHeader}>
+          <Text style={styles.conversationName} numberOfLines={1}>
+            {getGroupConversationName(item)}
+          </Text>
+          <View style={styles.conversationHeaderRight}>
+            {getGroupConversationTime(item) ? (
+              <Text style={styles.conversationTime}>
+                {formatMessageTime(getGroupConversationTime(item) as string)}
+              </Text>
+            ) : null}
+            {item.unreadCount && item.unreadCount > 0 ? (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+        <View style={styles.conversationFooter}>
+          <Text style={styles.conversationPreview} numberOfLines={1}>
+            {getGroupConversationPreview(item)}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
   const renderMessageItem = ({ item }: { item: Message }) => {
     const attachmentUrl = getAttachmentDisplayUrl(item);
     const isImageAttachment =
       item.type === "IMAGE" || item.attachmentMimeType?.startsWith("image/");
     const hasText = Boolean(item.content?.trim());
+    const peerName =
+      item.senderName ||
+      selectedConversation?.otherParticipant.name ||
+      (selectedGroupConversation ? getGroupConversationName(selectedGroupConversation) : "");
 
     return (
     <View
@@ -514,7 +688,7 @@ const Messages: React.FC = () => {
         <View style={styles.messageAvatarContainer}>
           <View style={styles.messageAvatar}>
             <Text style={styles.messageAvatarText}>
-              {getInitials(selectedConversation?.otherParticipant.name || '')}
+              {getInitials(peerName)}
             </Text>
           </View>
         </View>
@@ -600,12 +774,25 @@ const Messages: React.FC = () => {
     </TouchableOpacity>
   );
 
+  const isInChat = Boolean(selectedConversation || selectedGroupConversation);
+  const currentMessages = activeTab === "groups" ? groupMessages : messages;
+  const isLoadingCurrentMessages =
+    activeTab === "groups" ? isLoadingGroupMessages : isLoadingMessages;
+  const isSendingMessage =
+    activeTab === "groups"
+      ? sendGroupMessageMutation.isPending
+      : sendMessageMutation.isPending;
+  const chatTitle =
+    activeTab === "groups" && selectedGroupConversation
+      ? getGroupConversationName(selectedGroupConversation)
+      : selectedConversation?.otherParticipant.name || "";
+
   return (
     <DriverLayout
       showBackButton={false}
       onBackClick={handleBackClick}
       currentTab="messages"
-      hideHeader={!!selectedConversation}
+      hideHeader={isInChat}
     >
       <KeyboardAvoidingView
         style={styles.container}
@@ -698,11 +885,42 @@ const Messages: React.FC = () => {
           </View>
         </Modal>
 
-        {!selectedConversation ? (
-          <View style={styles.conversationsContainer}>
-            
-            
+        {!isInChat && (
+          <View style={styles.tabsWrap}>
+            <View style={styles.tabsContainer}>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === "direct" && styles.activeTab]}
+                onPress={() => setActiveTab("direct")}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === "direct" && styles.activeTabText,
+                  ]}
+                >
+                  Messages
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === "groups" && styles.activeTab]}
+                onPress={() => setActiveTab("groups")}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === "groups" && styles.activeTabText,
+                  ]}
+                >
+                  Groups
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
+        {activeTab === "direct" ? (
+        !selectedConversation ? (
+          <View style={styles.conversationsContainer}>
             {isLoadingConversations ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator
@@ -851,6 +1069,135 @@ const Messages: React.FC = () => {
               </View>
             </View>
       </View>
+        )
+        ) : !selectedGroupConversation ? (
+          <View style={styles.conversationsContainer}>
+            {isLoadingGroupConversations ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator
+                  size="large"
+                  color={driverTheme.colors.primary.main}
+                />
+              </View>
+            ) : groupConversations.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Icon
+                  name="groups"
+                  type="material"
+                  size={64}
+                  color={driverTheme.colors.text.secondary}
+                />
+                <Text style={styles.emptyTitle}>No group conversations yet</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={groupConversations}
+                renderItem={renderGroupConversationItem}
+                keyExtractor={(item) => String(item.id)}
+                style={styles.conversationsList}
+                contentContainerStyle={styles.conversationsListContent}
+              />
+            )}
+          </View>
+        ) : (
+          <View style={styles.chatContainer}>
+            {selectedGroupConversation && (
+              <View style={[styles.chatHeader, { paddingTop: insets.top + driverTheme.spacing.sm }]}>
+                <TouchableOpacity
+                  onPress={handleBackClick}
+                  style={styles.chatHeaderBackButton}
+                >
+                  <Icon name="arrow-back" type="material" size={24} color={driverTheme.colors.text.primary} />
+                </TouchableOpacity>
+                <View style={styles.chatHeaderAvatar}>
+                  <Text style={styles.chatHeaderAvatarText}>
+                    {getInitials(getGroupConversationName(selectedGroupConversation))}
+                  </Text>
+                </View>
+                <View style={styles.chatHeaderInfo}>
+                  <View style={styles.chatHeaderNameRow}>
+                    <Text style={styles.chatHeaderName}>{chatTitle}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {isLoadingCurrentMessages ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator
+                  size="large"
+                  color={driverTheme.colors.primary.main}
+                />
+              </View>
+            ) : currentMessages.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>
+                  No group messages yet. Start the conversation!
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                ref={messagesEndRef}
+                data={currentMessages}
+                renderItem={renderMessageItem}
+                keyExtractor={(item) => String(item.id)}
+                style={styles.messagesList}
+                contentContainerStyle={styles.messagesListContent}
+                onContentSizeChange={() => {
+                  messagesEndRef.current?.scrollToEnd({ animated: true });
+                }}
+              />
+            )}
+
+            <View style={styles.inputContainer}>
+              {pendingAttachment ? (
+                <View style={styles.pendingAttachmentChip}>
+                  <Text style={styles.pendingAttachmentText} numberOfLines={1}>
+                    {pendingAttachment.originalName}
+                  </Text>
+                  <TouchableOpacity onPress={clearPendingAttachment}>
+                    <Icon name="close" type="material" size={18} color={driverTheme.colors.text.secondary} />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+              <View style={styles.inputRow}>
+                <TouchableOpacity
+                  style={styles.attachButton}
+                  onPress={handlePickAttachment}
+                  disabled={isUploadingAttachment}
+                >
+                  {isUploadingAttachment ? (
+                    <ActivityIndicator size="small" color={driverTheme.colors.primary.main} />
+                  ) : (
+                    <Icon name="attach-file" type="material" size={22} color={driverTheme.colors.primary.main} />
+                  )}
+                </TouchableOpacity>
+                <TextInput
+                  style={styles.messageInput}
+                  placeholder="Type a message..."
+                  value={message}
+                  onChangeText={setMessage}
+                  multiline
+                  placeholderTextColor={driverTheme.colors.text.secondary}
+                />
+                <TouchableOpacity
+                  style={[
+                    styles.sendButton,
+                    (!canSendChatMessage(message, Boolean(pendingAttachment)) || isSendingMessage) &&
+                      styles.sendButtonDisabled,
+                  ]}
+                  onPress={handleSendMessage}
+                  disabled={!canSendChatMessage(message, Boolean(pendingAttachment)) || isSendingMessage}
+                >
+                  {isSendingMessage ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Icon name="send" type="material" color="#fff" size={22} />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         )}
       </KeyboardAvoidingView>
     </DriverLayout>
@@ -865,6 +1212,39 @@ const styles = StyleSheet.create({
   conversationsContainer: {
     flex: 1,
     backgroundColor: CHAT_LIGHT_BLUE_SOFT,
+  },
+  tabsWrap: {
+    alignItems: "center",
+    marginHorizontal: driverTheme.spacing.md,
+    marginTop: driverTheme.spacing.md,
+    marginBottom: driverTheme.spacing.sm,
+  },
+  tabsContainer: {
+    flexDirection: "row",
+    width: "100%",
+    maxWidth: 380,
+    backgroundColor: "#fff",
+    borderRadius: 999,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: "center",
+    borderRadius: 999,
+  },
+  activeTab: {
+    backgroundColor: "#0066FF",
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#4B5563",
+  },
+  activeTabText: {
+    color: "#fff",
   },
   searchContainer: {
     flexDirection: "row",

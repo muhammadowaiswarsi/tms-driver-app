@@ -40,6 +40,7 @@ import {
 import { customAxios } from "../../src/services/api";
 import { driverTheme } from "../../src/theme/driverTheme";
 import { Event } from "../../src/types/driver.types";
+import { getUpcomingDriverLoads } from "../../src/utils/driverLoadFilters";
 
 
 const TypedCard = Card as any;
@@ -227,6 +228,8 @@ const LoadSearch: React.FC = () => {
     isLoading: isLoadingActive,
     refetch: refetchActive,
   } = useDriverActiveLoads();
+
+  const upcomingLoads = getUpcomingDriverLoads(driverUpcomingLoads?.data);
 
   const loadId = driverActiveLoads?.data?.id;
   const [currentLocation, setCurrentLocation] = useState<{
@@ -991,12 +994,12 @@ const LoadSearch: React.FC = () => {
     <ScrollView
       style={styles.scrollView}
       contentContainerStyle={
-        !driverUpcomingLoads?.data || driverUpcomingLoads?.data.length === 0
+        upcomingLoads.length === 0
           ? styles.upcomingContentEmpty
           : styles.upcomingContent
       }
     >
-      {!driverUpcomingLoads?.data || driverUpcomingLoads?.data.length === 0 ? (
+      {upcomingLoads.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Image
             source={EMPTY_LOADS_SEARCH}
@@ -1009,7 +1012,7 @@ const LoadSearch: React.FC = () => {
           </Text>
         </View>
       ) : (
-        driverUpcomingLoads.data.map((load: any) => (
+        upcomingLoads.map((load: any) => (
           <TypedCard key={load.id} containerStyle={styles.upcomingCard}>
             <View style={styles.upcomingHeader}>
               <Text style={styles.upcomingLoadNumber}>{load.loadNumber}</Text>
@@ -1077,9 +1080,7 @@ const LoadSearch: React.FC = () => {
   );
 
   const activeCount = driverActiveLoads?.data ? 1 : 0;
-  const upcomingCount = Array.isArray(driverUpcomingLoads?.data)
-    ? driverUpcomingLoads.data.length
-    : 0;
+  const upcomingCount = upcomingLoads.length;
 
   return (
     <DriverLayout currentTab="loads">

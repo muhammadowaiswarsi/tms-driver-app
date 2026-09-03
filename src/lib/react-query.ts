@@ -88,6 +88,12 @@ export const queryKeys = {
     conversationMessages: (conversationId: string | number | null) => [...queryKeys.messaging.all, 'conversations', conversationId, 'messages'] as const,
     conversationMessagesList: (conversationId: string | number | null, filters: QueryFilters) => [...queryKeys.messaging.conversationMessages(conversationId), 'list', { ...filters }] as const,
     messages: () => [...queryKeys.messaging.all, 'messages'] as const,
+    groupConversations: () => [...queryKeys.messaging.all, 'groupConversations'] as const,
+    groupConversationsList: (filters: QueryFilters, userId?: string | number) =>
+      [...queryKeys.messaging.groupConversations(), String(userId ?? 'anonymous'), { ...filters }] as const,
+    groupConversationMessagesList: (conversationId: string | number, filters: QueryFilters, userId?: string | number) =>
+      [...queryKeys.messaging.all, 'groupConversationMessages', String(userId ?? 'anonymous'), conversationId, { ...filters }] as const,
+    groupMessages: () => [...queryKeys.messaging.all, 'groupMessages'] as const,
   },
   drivers: {
     all: ['drivers'] as const,

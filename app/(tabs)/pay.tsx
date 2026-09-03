@@ -61,10 +61,7 @@ const Pay: React.FC = () => {
       gross: Number(payload.gross) || 0,
       miles: Number(payload.miles) || 0,
       loadCount: Number(payload.loadCount) || 0,
-      changePercent:
-        payload.changePercent === null || payload.changePercent === undefined
-          ? null
-          : Number(payload.changePercent),
+      changePercent: Number(payload.changePercent) || 0,
       loadsThisWeek: Number(payload.loadsThisWeek) || 0,
       loads: Array.isArray(payload.loads) ? payload.loads : [],
     };
@@ -74,9 +71,12 @@ const Pay: React.FC = () => {
     setExpandedLoadId((current) => (current === loadId ? null : loadId));
   };
 
+  const changePercent = summary.changePercent;
+  const changeIsPositive = changePercent >= 0;
+
   const renderLoadCard = (load: DriverPayLoadGroup) => {
     const expanded = expandedLoadId === load.loadId;
-    const milesLabel = load.miles > 0 ? `${load.miles} mi` : null;
+    const milesLabel = `${Math.round(Number(load.miles) || 0)} mi`;
     const meta = [load.loadNumber, formatDate(load.date), milesLabel].filter(Boolean).join(' · ');
 
     return (
@@ -150,14 +150,28 @@ const Pay: React.FC = () => {
         <View style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
             <Text style={styles.summaryLabel}>NET EARNINGS</Text>
-            {summary.changePercent !== null && (
-              <View style={styles.changeBadge}>
-                <Text style={styles.changeBadgeText}>
-                  {summary.changePercent >= 0 ? '↗ +' : '↘ '}
-                  {Math.abs(summary.changePercent)}%
-                </Text>
-              </View>
-            )}
+            <View
+              style={[
+                styles.changeBadge,
+                changeIsPositive ? styles.changeBadgeUp : styles.changeBadgeDown,
+              ]}
+            >
+              <Icon
+                name={changeIsPositive ? 'trending-up' : 'trending-down'}
+                type="material"
+                color={changeIsPositive ? '#5AA2FF' : '#F87171'}
+                size={14}
+              />
+              <Text
+                style={[
+                  styles.changeBadgeText,
+                  { color: changeIsPositive ? '#5AA2FF' : '#F87171' },
+                ]}
+              >
+                {changeIsPositive ? '+' : '-'}
+                {Math.abs(changePercent).toFixed(1)}%
+              </Text>
+            </View>
           </View>
           <Text style={styles.summaryValue}>{formatMoney(summary.netEarnings)}</Text>
           <View style={styles.summaryStats}>
@@ -252,13 +266,20 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   changeBadge: {
-    backgroundColor: driverTheme.colors.primary.main,
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
+  changeBadgeUp: {
+    backgroundColor: 'rgba(0, 102, 255, 0.22)',
+  },
+  changeBadgeDown: {
+    backgroundColor: 'rgba(239, 68, 68, 0.22)',
+  },
   changeBadgeText: {
-    color: '#fff',
     fontSize: 11,
     fontWeight: '700',
   },
@@ -276,12 +297,13 @@ const styles = StyleSheet.create({
     paddingTop: 14,
   },
   statBlock: {
-    flex: 1,
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    paddingRight: 16,
   },
   statDivider: {
     width: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(255,255,255,0.16)',
+    marginRight: 16,
   },
   statLabel: {
     color: '#9AA4B2',
