@@ -1,11 +1,11 @@
 import { queryKeys } from '../lib/react-query';
 import { useGet } from './useApi';
 
-export const useDriverPaySummary = (): any => {
+export const useDriverPaySummary = (period = 'week'): any => {
   return useGet(
-    queryKeys.driverPay.summary() as unknown as any[],
+    queryKeys.driverPay.summary(period) as unknown as any[],
     '/driver/pay',
-    { enabled: true },
+    { enabled: true, queryParams: { period } },
   );
 };
 

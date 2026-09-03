@@ -102,7 +102,7 @@ export const queryKeys = {
   },
   driverPay: {
     all: ['driverPay'] as const,
-    summary: () => [...queryKeys.driverPay.all, 'summary'] as const,
+    summary: (period?: string) => [...queryKeys.driverPay.all, 'summary', period || 'week'] as const,
     byLoad: (loadId: string | number) => [...queryKeys.driverPay.all, 'load', loadId] as const,
   },
 };

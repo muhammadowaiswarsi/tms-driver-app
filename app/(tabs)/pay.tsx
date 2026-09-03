@@ -38,6 +38,14 @@ const formatRoute = (fromLocation?: string, toLocation?: string) => {
   return from || to || 'Load pay';
 };
 
+const PERIODS = [
+  { id: 'week', label: 'Week' },
+  { id: 'month', label: 'Month' },
+  { id: 'year', label: 'Year' },
+] as const;
+
+type PayPeriod = (typeof PERIODS)[number]['id'];
+
 const splitLineItem = (item: DriverPayLoadGroup['lineItems'][number]) => {
   const raw = String(item.label || 'Pay');
   const paren = raw.match(/^(.*?)\s*\((.*)\)\s*$/);
@@ -51,7 +59,8 @@ const splitLineItem = (item: DriverPayLoadGroup['lineItems'][number]) => {
 };
 
 const Pay: React.FC = () => {
-  const { data, isLoading, refetch, isRefetching } = useDriverPaySummary();
+  const [period, setPeriod] = useState<PayPeriod>('week');
+  const { data, isLoading, refetch, isRefetching } = useDriverPaySummary(period);
   const [expandedLoadId, setExpandedLoadId] = useState<string | null>(null);
 
   const summary: DriverPaySummary = useMemo(() => {
@@ -62,7 +71,9 @@ const Pay: React.FC = () => {
       miles: Number(payload.miles) || 0,
       loadCount: Number(payload.loadCount) || 0,
       changePercent: Number(payload.changePercent) || 0,
+      periodLabel: payload.periodLabel || 'this week',
       loadsThisWeek: Number(payload.loadsThisWeek) || 0,
+      loadsInPeriod: Number(payload.loadsInPeriod ?? payload.loadsThisWeek) || 0,
       loads: Array.isArray(payload.loads) ? payload.loads : [],
     };
   }, [data]);
@@ -147,6 +158,23 @@ const Pay: React.FC = () => {
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
         }
       >
+        <View style={styles.periodTabs}>
+          {PERIODS.map((item) => {
+            const active = period === item.id;
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.periodTab, active && styles.periodTabActive]}
+                onPress={() => setPeriod(item.id)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.periodTabText, active && styles.periodTabTextActive]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
         <View style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
             <Text style={styles.summaryLabel}>NET EARNINGS</Text>
@@ -195,9 +223,7 @@ const Pay: React.FC = () => {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>LOAD PAY</Text>
           <Text style={styles.sectionSubtitle}>
-            {summary.loadsThisWeek > 0
-              ? `${summary.loadsThisWeek} loads this week`
-              : `${summary.loads.length} loads`}
+            {`${summary.loadsInPeriod || 0} loads ${summary.periodLabel}`}
           </Text>
         </View>
 
@@ -236,6 +262,47 @@ const styles = StyleSheet.create({
   content: {
     padding: driverTheme.spacing.md,
     paddingBottom: 32,
+  },
+  pageTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1B365D',
+    marginBottom: 12,
+  },
+  periodTabs: {
+    flexDirection: 'row',
+    backgroundColor: '#E8EEF5',
+    borderRadius: 999,
+    padding: 4,
+    marginBottom: 16,
+  },
+  periodTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  periodTabActive: {
+    backgroundColor: '#fff',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.12,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  periodTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  periodTabTextActive: {
+    color: '#111827',
   },
   summaryCard: {
     backgroundColor: '#1B2430',

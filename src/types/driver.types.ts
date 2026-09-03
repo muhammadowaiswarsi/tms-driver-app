@@ -129,12 +129,15 @@ export interface DriverPayLoadGroup {
 }
 
 export interface DriverPaySummary {
+  period?: 'week' | 'month' | 'year';
+  periodLabel?: string;
   netEarnings: number;
   gross: number;
   miles: number;
   loadCount: number;
   changePercent: number;
   loadsThisWeek: number;
+  loadsInPeriod?: number;
   loads: DriverPayLoadGroup[];
 }
 
