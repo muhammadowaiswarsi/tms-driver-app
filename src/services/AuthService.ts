@@ -1,9 +1,24 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import '../config/amplify'; 
+import '../config/amplify';
+import {
+  confirmResetPassword,
+  confirmSignIn,
+  fetchAuthSession,
+  getCurrentUser,
+  resetPassword,
+  signIn,
+  signOut,
+} from 'aws-amplify/auth';
 
+const FORGOT_PASSWORD_EMAIL_KEY = 'forgotPasswordEmail';
 
-import { Amplify } from 'aws-amplify';
-import { confirmSignIn, fetchAuthSession, getCurrentUser, signIn, signOut } from 'aws-amplify/auth';
+const getErrorMessage = (error: any, fallback: string) => {
+  if (!error) return fallback;
+  if (typeof error === 'string') return error;
+  if (error.message) return error.message;
+  if (error.name) return error.name;
+  return fallback;
+};
 
 
 const Auth = {
@@ -89,6 +104,12 @@ const Auth = {
   completeNewPassword: async (user: any, newPassword: string) => {
     await confirmSignIn({ challengeResponse: newPassword });
     return await getCurrentUser();
+  },
+  forgotPassword: async (username: string) => {
+    return await resetPassword({ username });
+  },
+  forgotPasswordSubmit: async (username: string, confirmationCode: string, newPassword: string) => {
+    await confirmResetPassword({ username, confirmationCode, newPassword });
   },
 };
 
@@ -233,6 +254,39 @@ const AuthService = {
         idToken: session.getIdToken().getJwtToken(),
         refreshToken: session.getRefreshToken().getToken(),
       };
+    } catch {
+      return null;
+    }
+  },
+
+  forgotPassword: async (email: string): Promise<{ success?: boolean; error?: string }> => {
+    try {
+      const username = email.trim();
+      await Auth.forgotPassword(username);
+      await AsyncStorage.setItem(FORGOT_PASSWORD_EMAIL_KEY, username);
+      return { success: true };
+    } catch (err: any) {
+      return { error: getErrorMessage(err, 'Failed to send reset code') };
+    }
+  },
+
+  confirmForgotPassword: async (
+    email: string,
+    code: string,
+    newPassword: string
+  ): Promise<{ success?: boolean; error?: string }> => {
+    try {
+      await Auth.forgotPasswordSubmit(email.trim(), code, newPassword);
+      await AsyncStorage.removeItem(FORGOT_PASSWORD_EMAIL_KEY);
+      return { success: true };
+    } catch (err: any) {
+      return { error: getErrorMessage(err, 'Failed to change password') };
+    }
+  },
+
+  getForgotPasswordEmail: async (): Promise<string | null> => {
+    try {
+      return await AsyncStorage.getItem(FORGOT_PASSWORD_EMAIL_KEY);
     } catch {
       return null;
     }

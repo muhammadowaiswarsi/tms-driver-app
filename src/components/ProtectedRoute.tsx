@@ -36,7 +36,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     }
 
     const shouldRedirect = 
-      (!isAuthenticated && !inAuthGroup && !currentPath.includes('/auth/login')) ||
+      (!isAuthenticated && !inAuthGroup) ||
       (isAuthenticated && inAuthGroup && !currentPath.includes('/(tabs)/loads'));
 
     if (shouldRedirect) {

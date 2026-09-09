@@ -2,17 +2,18 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
+  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Input, Text } from 'react-native-elements';
+import { Input } from 'react-native-elements';
+import AuthScreenLayout, { authFormStyles } from '../../src/components/auth/AuthScreenLayout';
 import { useAuth } from '../../src/hooks/useAuth';
-import { driverTheme } from '../../src/theme/driverTheme';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Login() {
   const router = useRouter();
@@ -21,32 +22,39 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   const isButtonEnabled = email.trim().length > 0 && password.trim().length > 0;
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
-      return;
+    const trimmedEmail = email.trim();
+    let hasError = false;
+
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
+      setEmailError('Enter a valid email');
+      hasError = true;
+    } else {
+      setEmailError('');
     }
+
+    if (!password.trim()) {
+      setPasswordError('Password is required');
+      hasError = true;
+    } else {
+      setPasswordError('');
+    }
+
+    if (hasError) return;
 
     setLoading(true);
     try {
-      const result = await login(email, password);
-      
-      
-      if (result?.error) {
-        Alert.alert('Login Failed', result.error);
-        setLoading(false);
-        return;
-      }
-      
+      const result = await login(trimmedEmail, password);
+
       if (result?.challenge === 'NEW_PASSWORD_REQUIRED') {
-        
-        router.push('/auth/new-password' as any);
+        router.push('/auth/new-password');
       } else if (result?.user) {
-        
-        router.replace('/(tabs)/loads' as any);
+        router.replace('/(tabs)/loads');
       } else {
         Alert.alert('Login Failed', 'An unknown error has occurred');
       }
@@ -59,151 +67,96 @@ export default function Login() {
   };
 
   return (
-    <View style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-        keyboardVerticalOffset={0}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          bounces={false}>
-          <View style={styles.content}>
-          <Text h2 style={styles.title}>
-            Welcome Back
-          </Text>
-          <Text style={styles.subtitle}>Sign in to continue</Text>
+    <AuthScreenLayout>
+      <View style={authFormStyles.iconBadge}>
+        <MaterialIcons name="local-shipping" size={28} color="#fff" />
+      </View>
+      <Text style={authFormStyles.title}>Welcome Back</Text>
+      <Text style={authFormStyles.subtitle}>Sign in to manage your drayage operations</Text>
 
-          <View style={styles.form}>
-            <Input
-              placeholder="Email"
-              leftIcon={<MaterialIcons name="email" size={20} color="#86939e" />}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              inputContainerStyle={styles.inputContainer}
-              inputStyle={styles.input}
-              containerStyle={styles.inputWrapper}
-            />
+      <Text style={authFormStyles.label}>Email Address</Text>
+      <Input
+        placeholder="john@company.com"
+        leftIcon={<MaterialIcons name="email" size={20} color="#86939e" />}
+        value={email}
+        onChangeText={(value) => {
+          setEmail(value);
+          if (emailError) setEmailError('');
+        }}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete="email"
+        inputContainerStyle={authFormStyles.inputContainer}
+        inputStyle={authFormStyles.input}
+        containerStyle={authFormStyles.inputWrapper}
+        renderErrorMessage={false}
+      />
+      {!!emailError && <Text style={authFormStyles.error}>{emailError}</Text>}
 
-            <Input
-              placeholder="Password"
-              leftIcon={<MaterialIcons name="lock" size={20} color="#86939e" />}
-              rightIcon={
-                <MaterialIcons
-                  name={showPassword ? 'visibility' : 'visibility-off'}
-                  size={20}
-                  color="#86939e"
-                  onPress={() => setShowPassword(!showPassword)}
-                />
-              }
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoComplete="password"
-              inputContainerStyle={styles.inputContainer}
-              inputStyle={styles.input}
-              containerStyle={styles.inputWrapper}
-            />
+      <View style={authFormStyles.labelRow}>
+        <Text style={[authFormStyles.label, styles.labelNoMargin]}>Password</Text>
+        <TouchableOpacity onPress={() => router.push('/auth/forgot-password')} hitSlop={8}>
+          <Text style={authFormStyles.link}>Forgot password?</Text>
+        </TouchableOpacity>
+      </View>
+      <Input
+        placeholder="Enter your password"
+        leftIcon={<MaterialIcons name="lock" size={20} color="#86939e" />}
+        rightIcon={
+          <MaterialIcons
+            name={showPassword ? 'visibility' : 'visibility-off'}
+            size={20}
+            color="#86939e"
+            onPress={() => setShowPassword((prev) => !prev)}
+          />
+        }
+        value={password}
+        onChangeText={(value) => {
+          setPassword(value);
+          if (passwordError) setPasswordError('');
+        }}
+        secureTextEntry={!showPassword}
+        autoCapitalize="none"
+        autoComplete="password"
+        inputContainerStyle={authFormStyles.inputContainer}
+        inputStyle={authFormStyles.input}
+        containerStyle={authFormStyles.inputWrapper}
+        renderErrorMessage={false}
+      />
+      {!!passwordError && <Text style={authFormStyles.error}>{passwordError}</Text>}
 
-            <TouchableOpacity
-              style={isButtonEnabled ? styles.loginButton : styles.loginButtonDisabled}
-              onPress={isButtonEnabled ? handleLogin : undefined}
-              disabled={!isButtonEnabled || loading}
-              activeOpacity={0.8}>
-              {loading ? (
-                <Text style={styles.loginButtonText}>Loading...</Text>
-              ) : (
-                <Text style={isButtonEnabled ? styles.loginButtonText : styles.loginButtonTextDisabled}>
-                  Login
-                </Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+      <TouchableOpacity
+        style={[
+          authFormStyles.primaryButton,
+          (!isButtonEnabled || loading) && authFormStyles.primaryButtonDisabled,
+        ]}
+        onPress={isButtonEnabled && !loading ? handleLogin : undefined}
+        disabled={!isButtonEnabled || loading}
+        activeOpacity={0.8}>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <>
+            <Text
+              style={[
+                authFormStyles.primaryButtonText,
+                !isButtonEnabled && authFormStyles.primaryButtonTextDisabled,
+              ]}>
+              Sign In
+            </Text>
+            {isButtonEnabled && (
+              <MaterialIcons name="arrow-forward" size={20} color="#fff" style={{ marginLeft: 8 }} />
+            )}
+          </>
+        )}
+      </TouchableOpacity>
+    </AuthScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 20,
-    minHeight: '100%',
-  },
-  content: {
-    width: '100%',
-  },
-  title: {
-    textAlign: 'center',
-    marginBottom: 10,
-    color: '#333',
-  },
-  subtitle: {
-    textAlign: 'center',
-    marginBottom: 40,
-    color: '#86939e',
-    fontSize: 16,
-  },
-  form: {
-    width: '100%',
-  },
-  inputWrapper: {
-    paddingHorizontal: 0,
-    marginBottom: 10,
-  },
-  inputContainer: {
-    borderWidth: 1,
-    borderColor: '#e1e8ed',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    backgroundColor: '#f5f5f5',
-  },
-  input: {
-    marginLeft: 10,
-    color: '#333',
-  },
-  loginButton: {
-    backgroundColor: driverTheme.colors.primary.main,
-    borderRadius: 8,
-    paddingVertical: 14,
-    marginTop: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 50,
-  },
-  loginButtonDisabled: {
-    backgroundColor: driverTheme.colors.grey[300],
-    borderRadius: 8,
-    paddingVertical: 14,
-    marginTop: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 50,
-  },
-  loginButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  loginButtonTextDisabled: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: driverTheme.colors.text.disabled,
+  labelNoMargin: {
+    marginBottom: 0,
   },
 });
-
