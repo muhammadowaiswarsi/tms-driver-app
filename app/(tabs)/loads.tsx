@@ -697,10 +697,6 @@ const LoadSearch: React.FC = () => {
 
   const handleConfirmComplete = async () => {
     const chassis = chassisNumber.trim();
-    if (!chassis) {
-      Alert.alert("Required", "Chassis number is required.");
-      return;
-    }
 
     const rawSig = podEsignData.signatureDataUrl?.trim() ?? "";
     if (!rawSig) {
@@ -1264,6 +1260,7 @@ const LoadSearch: React.FC = () => {
               />
             </View>
 
+            {/* Skip hidden for now — signature stays required to complete.
             <TouchableOpacity
               style={styles.podSignSkipButton}
               onPress={handlePodSignSkip}
@@ -1271,6 +1268,7 @@ const LoadSearch: React.FC = () => {
             >
               <Text style={styles.podSignSkipText}>Skip</Text>
             </TouchableOpacity>
+            */}
           </View>
         </View>
       )}
