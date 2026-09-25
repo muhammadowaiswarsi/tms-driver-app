@@ -567,7 +567,7 @@ const Messages: React.FC = () => {
     if (diffDays === 1) return "a day ago";
     if (diffDays < 7) return `${diffDays} days ago`;
 
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return date.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
   };
 
   const getInitials = (name: string) => {

@@ -28,7 +28,7 @@ const formatDate = (value?: string | Date | null) => {
   if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 };
 
 const formatMiles = (miles?: number) => `${(Number(miles) || 0).toFixed(2)} mi`;
