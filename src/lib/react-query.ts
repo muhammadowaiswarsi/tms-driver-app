@@ -64,6 +64,7 @@ export const queryKeys = {
     list: (filters: QueryFilters) => [...queryKeys.driverLoads.lists(), { ...filters }] as const,
     detail: (id: string | number) => [...queryKeys.driverLoads.all, 'detail', id] as const,
     active: () => [...queryKeys.driverLoads.all, 'active'] as const,
+    accepted: () => [...queryKeys.driverLoads.all, 'accepted'] as const,
     locationStatus: (id: string | number) => [...queryKeys.driverLoads.all, 'locationStatus', id] as const,
     returnInfo: (id: string | number) => [...queryKeys.driverLoads.all, 'returnInfo', id] as const,
   },

@@ -33,6 +33,14 @@ export const useDriverLoadDecision = (loadId: string | number, options = {}) => 
   );
 };
 
+export const useDriverAcceptedLoads = (filters = {}): any => {
+  return useGet(
+    queryKeys.driverLoads.accepted() as unknown as any[],
+    '/driver/loads/accepted',
+    { enabled: true, queryParams: filters },
+  );
+};
+
 export const useDriverActiveLoads = (filters = {}): any => {
   return useGet(
     queryKeys.driverLoads.active() as unknown as any[],

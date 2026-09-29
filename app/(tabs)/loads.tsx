@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { Button, Card, Icon, Input } from "react-native-elements";
@@ -29,18 +28,21 @@ import {
   toApiTime24h,
 } from "../../src/components/pod";
 import { useAuth } from "../../src/hooks/useAuth";
+import LoadReferenceDetails from "../../src/components/LoadReferenceDetails";
+import { setSelectedDriverLoad } from "../../src/driver/selectedLoad";
 import {
   useChassis,
+  useDriverAcceptedLoads,
   useDriverActiveLoads,
   useDriverAssignedLoads,
   useDriverLoadLocationStatus,
-  useDriverStartLoadRoutingMove,
+  useLoadDocuments,
   useUpdateDriverLoadReturnInfo,
 } from "../../src/hooks/useLoad";
 import { customAxios } from "../../src/services/api";
 import { driverTheme } from "../../src/theme/driverTheme";
 import { Event } from "../../src/types/driver.types";
-import { getUpcomingDriverLoads } from "../../src/utils/driverLoadFilters";
+import { formatPickupDateTime, getUpcomingDriverLoads, sortDriverLoadsByPickupDate } from "../../src/utils/driverLoadFilters";
 
 
 const TypedCard = Card as any;
@@ -188,7 +190,12 @@ const LoadSearch: React.FC = () => {
   });
   const [confirmDialog, setConfirmDialog] = useState(false);
   const [podSignPromptDialog, setPodSignPromptDialog] = useState(false);
+  const [podSignPurpose, setPodSignPurpose] = useState<"deliver" | "complete">("deliver");
   const [hasPodSignature, setHasPodSignature] = useState(false);
+  const [loadToStartId, setLoadToStartId] = useState("");
+  const [startChassisNumber, setStartChassisNumber] = useState("");
+  const [isStartingLoad, setIsStartingLoad] = useState(false);
+  const [startChassisPickerVisible, setStartChassisPickerVisible] = useState(false);
   const [podEsignDialog, setPodEsignDialog] = useState(false);
   const [podEsignData, setPodEsignData] = useState<PodEsignFormValues>(() =>
     createDefaultPodEsignValues(),
@@ -205,10 +212,8 @@ const LoadSearch: React.FC = () => {
     "departed" | "arrived" | "complete"
   >("arrived");
   const [chassisNumber, setChassisNumber] = useState("");
-  const [selectedChassisId, setSelectedChassisId] = useState<string>("");
   const [containerNumber, setContainerNumber] = useState("");
   const [documents, setDocuments] = useState<any[]>([]);
-  const [chassisPickerVisible, setChassisPickerVisible] = useState(false);
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
 
   const { authState } = useAuth();
@@ -224,12 +229,21 @@ const LoadSearch: React.FC = () => {
   } = useDriverAssignedLoads();
 
   const {
+    data: driverAcceptedLoads,
+    refetch: refetchAccepted,
+  } = useDriverAcceptedLoads();
+
+  const {
     data: driverActiveLoads,
     isLoading: isLoadingActive,
     refetch: refetchActive,
   } = useDriverActiveLoads();
+  const { data: activeLoadDocuments } = useLoadDocuments(driverActiveLoads?.data?.id);
 
   const upcomingLoads = getUpcomingDriverLoads(driverUpcomingLoads?.data);
+  const acceptedLoads = sortDriverLoadsByPickupDate(
+    Array.isArray(driverAcceptedLoads?.data) ? driverAcceptedLoads.data : [],
+  );
 
   const loadId = driverActiveLoads?.data?.id;
   const [currentLocation, setCurrentLocation] = useState<{
@@ -320,24 +334,54 @@ const LoadSearch: React.FC = () => {
 
 
 
-  const { mutate: driverStartLoad } = useDriverStartLoadRoutingMove(
-    driverActiveLoads?.data?.id || "",
-    {
-      onSuccess: () => {
-        refetchActive();
-        setStartLoadDialog(false);
-      },
-      onError: (error: any) => {
-        Alert.alert("Error", "Error starting load routing move");
-      },
-    },
+  const chassisNumbers = (chassisData?.data || [])
+    .map((item: any) => String(item?.chassisNumber || "").trim())
+    .filter(Boolean);
+
+  const matchingStartChassis = chassisNumbers.filter((number: string) =>
+    number.toLowerCase().includes(startChassisNumber.trim().toLowerCase()),
   );
+
+  const handleStartLoad = (load: any) => {
+    setLoadToStartId(load?.id || "");
+    setStartChassisNumber(
+      load?.chassis?.chassisNumber || load?.otherChassisNumber || "",
+    );
+    setIsStartingLoad(false);
+    setStartChassisPickerVisible(false);
+    setStartLoadDialog(true);
+  };
+
+  const handleConfirmStartLoad = async () => {
+    const id = loadToStartId || driverActiveLoads?.data?.id;
+    const trimmedChassisNumber = startChassisNumber.trim();
+    if (!id) return;
+    if (!trimmedChassisNumber) {
+      Alert.alert("Required", "Enter the chassis number to start this load.");
+      return;
+    }
+    setIsStartingLoad(true);
+    try {
+      await customAxios.patch(`/driver/loads/${id}/start`, {
+        chassisNumber: trimmedChassisNumber,
+      });
+      await Promise.all([refetchActive(), refetchAccepted()]);
+      setStartLoadDialog(false);
+      setStartChassisNumber("");
+      setStartChassisPickerVisible(false);
+    } catch {
+      Alert.alert("Error", "Error starting load");
+    } finally {
+      setIsStartingLoad(false);
+    }
+  };
 
   const updateEventStatus = useDriverLoadLocationStatus(
     driverActiveLoads?.data?.id,
     {
       onSuccess: () => {
         refetchActive();
+        refetchAccepted();
         setConfirmDialog(false);
         setIsUpdating(false);
       },
@@ -428,16 +472,35 @@ const LoadSearch: React.FC = () => {
     setSelectedEventId(eventId);
     setActionType(action);
 
-    if (action === "complete") {
-      setHasPodSignature(false);
+    const event = getAllEvents().find((item: Event) => item.id === eventId);
+    const isDeliverContainer = String(event?.type || "").toUpperCase().includes("DELIVER");
+
+    if (action === "arrived" && isDeliverContainer) {
+      setPodSignPurpose("deliver");
       setPodSignPromptDialog(true);
-    } else {
-      setConfirmDialog(true);
+      return;
     }
+
+    if (action === "complete") {
+      if (!hasPodSignature) {
+        setPodSignPurpose("complete");
+        setPodSignPromptDialog(true);
+        return;
+      }
+      setDocumentDialog(true);
+      return;
+    }
+
+    setConfirmDialog(true);
   };
 
-  const handlePodSignSkip = () => {
+  const finishPodPrompt = () => {
     setPodSignPromptDialog(false);
+    if (podSignPurpose === "deliver") {
+      setActionType("arrived");
+      setConfirmDialog(true);
+      return;
+    }
     setDocumentDialog(true);
   };
 
@@ -458,8 +521,7 @@ const LoadSearch: React.FC = () => {
     setPodEsignData(values);
     setHasPodSignature(true);
     setPodEsignDialog(false);
-    setPodSignPromptDialog(false);
-    setDocumentDialog(true);
+    setPodSignPromptDialog(true);
   };
 
   const handleConfirmEventUpdate = async () => {
@@ -537,6 +599,20 @@ const LoadSearch: React.FC = () => {
               }))
             : fallbackDocuments;
 
+      if (!nextDocuments.some((doc) => isProofOfDeliveryDoc(doc))) {
+        const podOption = ORGANIZATION_DOCUMENT_OPTIONS.find((doc) => isProofOfDeliveryDoc(doc));
+        if (podOption) {
+          nextDocuments.push({
+            id: String(nextDocuments.length + 1),
+            name: podOption.label,
+            type: podOption.type,
+            required: podOption.required,
+            uploaded: false,
+            uploadData: null,
+          });
+        }
+      }
+
       setDocuments((prev) =>
         nextDocuments.map((doc) => {
           const existingDoc = prev.find(
@@ -555,7 +631,11 @@ const LoadSearch: React.FC = () => {
             : doc;
         }),
       );
-      setChassisNumber(driverActiveLoads.data.chassis?.chassisNumber || "");
+      setChassisNumber(
+        driverActiveLoads.data.chassis?.chassisNumber ||
+          driverActiveLoads.data.otherChassisNumber ||
+          "",
+      );
       setContainerNumber(driverActiveLoads.data.containerNumber || "");
     }
   }, [driverActiveLoads]);
@@ -583,26 +663,24 @@ const LoadSearch: React.FC = () => {
   };
 
   const handleShowDetails = (load: any) => {
+    setSelectedDriverLoad(load);
     router.push({
       pathname: "/load-details",
       params: { loadId: load.id },
     } as any);
   };
 
-  const handleStartLoad = () => {
-    setStartLoadDialog(true);
-  };
+  const isDocumentDone = (doc: { type?: string; uploaded?: boolean }) =>
+    isProofOfDeliveryDoc(doc) ? hasPodSignature || Boolean(doc.uploaded) : Boolean(doc.uploaded);
 
-  const handleConfirmStartLoad = () => {
-    setStartLoadDialog(false);
-    driverStartLoad({
-      data: {},
-    });
-  };
+  const documentsForComplete = [
+    ...documents.filter((doc) => !isProofOfDeliveryDoc(doc)),
+    ...documents.filter((doc) => isProofOfDeliveryDoc(doc)),
+  ];
 
   const allRequiredDocsUploaded = documents
-    .filter((doc) => doc.required && !isProofOfDeliveryDoc(doc))
-    .every((doc) => doc.uploaded);
+    .filter((doc) => doc.required)
+    .every((doc) => isDocumentDone(doc));
 
   const handleCompleteLoad = () => {
     if (!allRequiredDocsUploaded) return;
@@ -696,22 +774,12 @@ const LoadSearch: React.FC = () => {
   };
 
   const handleConfirmComplete = async () => {
-    const chassis = chassisNumber.trim();
-
     const rawSig = podEsignData.signatureDataUrl?.trim() ?? "";
-    if (!rawSig) {
-      Alert.alert(
-        "Required",
-        "Signature is required. Use Sign Proof of Delivery, then E-Sign, before completing the load.",
-      );
-      return;
-    }
 
     setIsCompleting(true);
     try {
-      const podSubmission: Record<string, string> = {
-        signatureDataUrl: normalizeSignatureDataUrl(rawSig),
-      };
+      const podSubmission: Record<string, string> = {};
+      if (rawSig) podSubmission.signatureDataUrl = normalizeSignatureDataUrl(rawSig);
       if (podEsignData.printName?.trim()) {
         podSubmission.receiverName = podEsignData.printName.trim();
       }
@@ -725,16 +793,24 @@ const LoadSearch: React.FC = () => {
         podSubmission.timeOut = toApiTime24h(podEsignData.timeOut);
       }
 
-      const payload: Record<string, unknown> = {
-        chassisNumber: chassis,
-        podSubmission,
-      };
+      const payload: Record<string, unknown> = {};
+      if (rawSig) payload.podSubmission = podSubmission;
       if (containerNumber.trim()) {
         payload.containerNumber = containerNumber.trim();
       }
 
       documents.forEach((doc) => {
         if (isProofOfDeliveryDoc(doc)) {
+          if (!rawSig && doc.uploaded && doc.uploadData) {
+            (payload as Record<string, unknown>)[doc.type] = {
+              key: doc.uploadData.key,
+              url: doc.uploadData.url,
+              originalName: doc.uploadData.originalName,
+              bucket: doc.uploadData.bucket,
+              mimeType: doc.uploadData.mimeType,
+              size: doc.uploadData.size,
+            };
+          }
           return;
         }
         if (doc.uploaded && doc.uploadData) {
@@ -756,8 +832,38 @@ const LoadSearch: React.FC = () => {
     }
   };
 
+  const renderAcceptedLoadCard = (load: any) => (
+    <TypedCard key={load.id} containerStyle={styles.upcomingCard}>
+      <View style={styles.upcomingHeader}>
+        <Text style={styles.upcomingLoadNumber}>{load.loadNumber}</Text>
+        <View style={[styles.upcomingChip, { backgroundColor: driverTheme.colors.primary.main }]}>
+          <Text style={[styles.upcomingChipText, { color: "#fff" }]}>Accepted</Text>
+        </View>
+      </View>
+      <Text style={styles.loadDetail}>Pickup: {formatPickupDateTime(load)}</Text>
+      <Text style={[styles.loadDetail, { marginBottom: 12 }]}>
+        Container #: {load.containerNumber || "--"}
+      </Text>
+      {load.status === "PENDING" || load.status === "DISPATCHED" || !load.status ? (
+        <Button
+          title="Start Load"
+          onPress={() => handleStartLoad(load)}
+          buttonStyle={[styles.startButton, { backgroundColor: driverTheme.colors.success.dark, marginTop: 0 }]}
+          titleStyle={styles.buttonTitle}
+        />
+      ) : null}
+    </TypedCard>
+  );
+
   const renderActiveTab = () => {
     if (!driverActiveLoads?.data) {
+      if (acceptedLoads.length > 0) {
+        return (
+          <ScrollView style={styles.scrollView} contentContainerStyle={styles.upcomingContent}>
+            {acceptedLoads.map(renderAcceptedLoadCard)}
+          </ScrollView>
+        );
+      }
       return (
         <View style={styles.emptyContainerActive}>
           <Image
@@ -800,46 +906,7 @@ const LoadSearch: React.FC = () => {
 
         
         <View style={styles.eventsContainer}>
-          {driverActiveLoads?.data?.status === "PENDING" ? (
-            <TypedCard containerStyle={styles.loadCard}>
-              <View style={styles.loadInfo}>
-                <View style={styles.loadHeader}>
-                  <Text style={styles.loadNumber}>
-                    Load Number: {driverActiveLoads?.data?.loadNumber || "--"}
-                  </Text>
-                  <View style={styles.chip}>
-                    <Text style={styles.chipText}>
-                      {driverActiveLoads?.data?.loadType?.toUpperCase() || "--"}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={styles.loadDetail}>
-                  Container #:{" "}
-                  {driverActiveLoads?.data?.containerNumber || "--"}
-                </Text>
-                <Text style={styles.loadDetail}>
-                  Chassis #:{" "}
-                  {driverActiveLoads?.data?.chassis?.chassisNumber || "--"}
-                </Text>
-                <Text style={styles.loadDetail}>
-                  Route Type:{" "}
-                  {driverActiveLoads?.data?.route
-                    ?.replace(/_/g, " ")
-                    .toUpperCase() || "N/A"}
-                </Text>
-                <Button
-                  title="Start Load"
-                  onPress={handleStartLoad}
-                  buttonStyle={[
-                    styles.startButton,
-                    { backgroundColor: driverTheme.colors.success.dark },
-                  ]}
-                  titleStyle={styles.buttonTitle}
-                />
-              </View>
-            </TypedCard>
-          ) : (
-            events
+            {events
               .filter((event: Event, index: number) => {
                 return (
                   event.status !== "DEPARTED" || index === events.length - 1
@@ -979,9 +1046,12 @@ const LoadSearch: React.FC = () => {
                     </View>
                   </TypedCard>
                 );
-              })
-          )}
+              })}
         </View>
+        <LoadReferenceDetails
+          load={driverActiveLoads?.data}
+          documents={activeLoadDocuments?.data || activeLoadDocuments}
+        />
       </ScrollView>
     );
   };
@@ -1044,19 +1114,33 @@ const LoadSearch: React.FC = () => {
               <View style={styles.upcomingDetailRow}>
                 <Text style={styles.upcomingDetailLabel}>Container</Text>
                 <Text style={styles.upcomingDetailValue}>
-                  {load.containerNumber || "N/A"}
+                  {load.containerNumber || "--"}
                 </Text>
               </View>
               <View style={styles.upcomingDetailRow}>
                 <Text style={styles.upcomingDetailLabel}>Route Type</Text>
                 <Text style={styles.upcomingDetailValue}>
-                  {load.route?.replace(/_/g, " ").toUpperCase() || "N/A"}
+                  {load.route?.replace(/_/g, " ").toUpperCase() || "--"}
                 </Text>
               </View>
               <View style={styles.upcomingDetailRow}>
                 <Text style={styles.upcomingDetailLabel}>Load Type</Text>
                 <Text style={styles.upcomingDetailValue}>
-                  {load.loadType?.toUpperCase() || "N/A"}
+                  {load.loadType?.toUpperCase() || "--"}
+                </Text>
+              </View>
+              <View style={styles.upcomingDetailRow}>
+                <Text style={styles.upcomingDetailLabel}>SCAC</Text>
+                <Text style={styles.upcomingDetailValue}>{load.scac || "--"}</Text>
+              </View>
+              <View style={styles.upcomingDetailRow}>
+                <Text style={styles.upcomingDetailLabel}>SSL</Text>
+                <Text style={styles.upcomingDetailValue}>{load.ssl || "--"}</Text>
+              </View>
+              <View style={styles.upcomingDetailRow}>
+                <Text style={styles.upcomingDetailLabel}>BOL</Text>
+                <Text style={styles.upcomingDetailValue}>
+                  {load.shipmentInfo?.billOfLading || load.shipmentInfo?.masterBillOfLading || load.shipmentInfo?.houseBillOfLading || "--"}
                 </Text>
               </View>
             </View>
@@ -1075,7 +1159,7 @@ const LoadSearch: React.FC = () => {
     </ScrollView>
   );
 
-  const activeCount = driverActiveLoads?.data ? 1 : 0;
+  const activeCount = acceptedLoads.length;
   const upcomingCount = upcomingLoads.length;
 
   return (
@@ -1167,21 +1251,63 @@ const LoadSearch: React.FC = () => {
           <TypedCard containerStyle={styles.dialogCard}>
             <Text style={styles.dialogTitle}>Start Load</Text>
             <Text style={styles.dialogMessage}>
-              Are you ready to start this load?
+              Enter the chassis number to start this load.
             </Text>
+            <Text style={styles.documentFieldLabel}>Chassis #</Text>
+            <Input
+              placeholder="Select or type chassis #"
+              value={startChassisNumber}
+              onChangeText={(value) => {
+                setStartChassisNumber(value);
+                setStartChassisPickerVisible(true);
+              }}
+              onFocus={() => setStartChassisPickerVisible(true)}
+              inputContainerStyle={styles.documentInput}
+              inputStyle={styles.documentInputText}
+              containerStyle={styles.documentInputWrapper}
+            />
+            {startChassisPickerVisible && matchingStartChassis.length > 0 && (
+              <View style={styles.dropdownList}>
+                <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
+                  {matchingStartChassis.map((number: string) => (
+                    <TouchableOpacity
+                      key={number}
+                      style={styles.dropdownItem}
+                      onPress={() => {
+                        setStartChassisNumber(number);
+                        setStartChassisPickerVisible(false);
+                      }}
+                    >
+                      <Text style={styles.dropdownItemText}>{number}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
             <View style={styles.dialogButtons}>
               <Button
-                title="Start Load"
+                title={isStartingLoad ? "Starting..." : "Start Load"}
                 onPress={handleConfirmStartLoad}
+                disabled={!startChassisNumber.trim() || isStartingLoad}
+                loading={isStartingLoad}
                 buttonStyle={[
                   styles.dialogButton,
-                  { backgroundColor: driverTheme.colors.primary.main },
+                  {
+                    backgroundColor: startChassisNumber.trim()
+                      ? driverTheme.colors.primary.main
+                      : driverTheme.colors.grey[300],
+                  },
                 ]}
                 titleStyle={styles.buttonTitle}
               />
               <Button
                 title="Cancel"
-                onPress={() => setStartLoadDialog(false)}
+                onPress={() => {
+                  if (isStartingLoad) return;
+                  setStartLoadDialog(false);
+                  setStartChassisPickerVisible(false);
+                }}
+                disabled={isStartingLoad}
                 buttonStyle={[
                   styles.dialogButton,
                   { backgroundColor: driverTheme.colors.grey[200] },
@@ -1260,15 +1386,14 @@ const LoadSearch: React.FC = () => {
               />
             </View>
 
-            {/* Skip hidden for now — signature stays required to complete.
-            <TouchableOpacity
-              style={styles.podSignSkipButton}
-              onPress={handlePodSignSkip}
-              activeOpacity={0.75}
-            >
-              <Text style={styles.podSignSkipText}>Skip</Text>
-            </TouchableOpacity>
-            */}
+            <View style={styles.podSignActions}>
+              <TouchableOpacity onPress={finishPodPrompt} activeOpacity={0.75}>
+                <Text style={styles.podSignSkipText}>Skip</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.podSignDoneButton} onPress={finishPodPrompt} activeOpacity={0.75}>
+                <Text style={styles.podSignDoneText}>Done</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       )}
@@ -1309,95 +1434,6 @@ const LoadSearch: React.FC = () => {
               showsVerticalScrollIndicator={true}
               nestedScrollEnabled
             >
-              
-              <View style={styles.documentField}>
-                <Text style={styles.documentFieldLabel}>Chassis #</Text>
-                <TouchableWithoutFeedback
-                  onPress={() => setChassisPickerVisible(false)}
-                >
-                  <View>
-                    <View style={styles.dropdownContainer}>
-                      <TouchableOpacity
-                        style={styles.selectContainer}
-                        onPress={() =>
-                          setChassisPickerVisible(!chassisPickerVisible)
-                        }
-                        disabled={
-                          isLoadingChassis || !chassisData?.data?.length
-                        }
-                      >
-                        {isLoadingChassis ? (
-                          <ActivityIndicator
-                            size="small"
-                            color={driverTheme.colors.primary.main}
-                          />
-                        ) : (
-                          <>
-                            <Text
-                              style={[
-                                styles.selectText,
-                                !chassisNumber && styles.selectPlaceholder,
-                              ]}
-                            >
-                              {chassisNumber || "Select Chassis"}
-                            </Text>
-                            <Icon
-                              name={
-                                chassisPickerVisible
-                                  ? "arrow-drop-up"
-                                  : "arrow-drop-down"
-                              }
-                              type="material"
-                              color={driverTheme.colors.text.secondary}
-                              size={24}
-                            />
-                          </>
-                        )}
-                      </TouchableOpacity>
-                      {chassisPickerVisible &&
-                        chassisData?.data &&
-                        chassisData.data.length > 0 && (
-                          <View style={styles.dropdownList}>
-                            <ScrollView
-                              style={styles.dropdownScroll}
-                              nestedScrollEnabled
-                            >
-                              {chassisData.data.map((chassis: any) => (
-                                <TouchableOpacity
-                                  key={chassis.id}
-                                  style={[
-                                    styles.dropdownItem,
-                                    selectedChassisId === chassis.id &&
-                                      styles.dropdownItemSelected,
-                                  ]}
-                                  onPress={() => {
-                                    setSelectedChassisId(chassis.id);
-                                    setChassisNumber(chassis.chassisNumber);
-                                    setChassisPickerVisible(false);
-                                  }}
-                                >
-                                  <Text style={styles.dropdownItemText}>
-                                    {chassis.chassisNumber}
-                                  </Text>
-                                  {selectedChassisId === chassis.id && (
-                                    <Icon
-                                      name="check"
-                                      type="material"
-                                      color={driverTheme.colors.primary.main}
-                                      size={20}
-                                    />
-                                  )}
-                                </TouchableOpacity>
-                              ))}
-                            </ScrollView>
-                          </View>
-                        )}
-                    </View>
-                  </View>
-                </TouchableWithoutFeedback>
-              </View>
-
-              
               <View style={styles.documentField}>
                 <Text style={styles.documentFieldLabel}>Container #</Text>
                 <Input
@@ -1413,9 +1449,9 @@ const LoadSearch: React.FC = () => {
               
               <Text style={styles.documentSectionTitle}>Documents</Text>
               <View>
-                {documents
-                  .filter((doc) => !isProofOfDeliveryDoc(doc))
-                  .map((doc) => (
+                {documentsForComplete.map((raw) => {
+                  const doc = { ...raw, uploaded: isDocumentDone(raw) };
+                  return (
                   <View
                     key={doc.id}
                     style={[
@@ -1492,11 +1528,12 @@ const LoadSearch: React.FC = () => {
                           color={driverTheme.colors.success.main}
                           size={20}
                         />
-                        <Text style={styles.uploadedText}>Uploaded</Text>
+                        <Text style={styles.uploadedText}>Uploaded successfully</Text>
                       </View>
                     )}
                   </View>
-                ))}
+                  );
+                })}
               </View>
 
               {!allRequiredDocsUploaded && (
@@ -1584,10 +1621,8 @@ const LoadSearch: React.FC = () => {
               </Text>
             </View>
             <Text style={styles.documentsTitle}>Documents</Text>
-            {documents
-              .filter(
-                (doc) => doc.uploaded && !isProofOfDeliveryDoc(doc),
-              )
+            {documentsForComplete
+              .filter((doc) => isDocumentDone(doc))
               .map((doc) => (
                 <View key={doc.id} style={styles.completeDocumentItem}>
                   <View style={styles.completeDocumentLeft}>
@@ -2253,6 +2288,28 @@ const styles = StyleSheet.create({
   },
   podSignActionIcon: {
     marginRight: 4,
+  },
+  chassisHelper: {
+    marginTop: 4,
+    color: driverTheme.colors.text.secondary,
+    fontSize: 12,
+  },
+  podSignActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 16,
+  },
+  podSignDoneButton: {
+    backgroundColor: driverTheme.colors.primary.main,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 22,
+  },
+  podSignDoneText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 14,
   },
   podSignSkipButton: {
     marginTop: driverTheme.spacing.xl,

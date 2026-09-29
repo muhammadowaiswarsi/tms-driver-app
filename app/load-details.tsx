@@ -1,11 +1,14 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button, Card, Icon } from "react-native-elements";
 import DriverLayout from "../src/components/common/DriverLayout";
-import CustomMapView from "../src/components/common/MapView";
-import { useDriverLoadDecision, useLoadRouting } from "../src/hooks/useLoad";
+import LoadReferenceDetails from "../src/components/LoadReferenceDetails";
+import CustomMapView, { type MapMarker } from "../src/components/common/MapView";
+import { getSelectedDriverLoad } from "../src/driver/selectedLoad";
+import { useDriverLoadDecision, useLoadDocuments, useLoadRouting } from "../src/hooks/useLoad";
 import { driverTheme } from "../src/theme/driverTheme";
+import { geocodeAddress, markerTypeFromEventType } from "../src/utils/geocode";
 
 
 const TypedCard = Card as any;
@@ -19,7 +22,52 @@ const LoadDetails: React.FC = () => {
   const [isRejecting, setIsRejecting] = useState(false);
 
   const loadId = params.loadId as string;
+  const loadData = getSelectedDriverLoad();
   const { data: loadRoutingData } = useLoadRouting(loadId || "");
+  const { data: loadDocuments } = useLoadDocuments(loadId || "");
+  const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
+
+  const routingEvents = useMemo(() => {
+    const payload = (loadRoutingData as any)?.data ?? loadRoutingData;
+    const moves = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [];
+    const events = moves.flatMap((move: any) => (Array.isArray(move?.events) ? move.events : []));
+    return [...events].sort((a: any, b: any) => (a.sequence ?? 0) - (b.sequence ?? 0));
+  }, [loadRoutingData]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      const next: MapMarker[] = [];
+      const seen = new Set<string>();
+      for (const event of routingEvents) {
+        if (event.latitude && event.longitude) {
+          next.push({
+            latitude: Number(event.latitude),
+            longitude: Number(event.longitude),
+            title: event.type?.replace(/_/g, " ") || "Stop",
+            type: markerTypeFromEventType(event.type),
+          });
+          continue;
+        }
+        const address = String(event.location || "").trim();
+        if (!address || seen.has(address.toLowerCase())) continue;
+        seen.add(address.toLowerCase());
+        const point = await geocodeAddress(address);
+        if (!point || cancelled) continue;
+        next.push({
+          latitude: point.latitude,
+          longitude: point.longitude,
+          title: `${(event.type || "Stop").replace(/_/g, " ")} — ${address}`,
+          type: markerTypeFromEventType(event.type),
+        });
+      }
+      if (!cancelled) setMapMarkers(next);
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [routingEvents]);
 
   const handleBackClick = () => {
     router.back();
@@ -74,29 +122,18 @@ const LoadDetails: React.FC = () => {
         
         <CustomMapView
           height={300}
-          markers={
-            loadRoutingData &&
-            (loadRoutingData as any).data &&
-            (loadRoutingData as any).data[0] &&
-            Array.isArray((loadRoutingData as any).data[0].events)
-              ? ((loadRoutingData as any).data[0].events as any[])
-                  .filter((event: any) => event.latitude && event.longitude)
-                  .map((event: any) => ({
-                    latitude: event.latitude,
-                    longitude: event.longitude,
-                    title: event.type?.replace(/_/g, " ") || "Event",
-                  }))
-              : []
-          }
+          markers={mapMarkers}
+          routeCoordinates={mapMarkers.map((marker) => ({
+            latitude: marker.latitude,
+            longitude: marker.longitude,
+          }))}
+          showRoute
         />
 
         
-        {loadRoutingData &&
-          (loadRoutingData as any).data &&
-          (loadRoutingData as any).data[0] &&
-          Array.isArray((loadRoutingData as any).data[0].events) && (
+        {routingEvents.length > 0 && (
             <View style={styles.eventsContainer}>
-              {((loadRoutingData as any).data[0].events as any[]).map(
+              {routingEvents.map(
                 (event: any, index: number) => (
                   <TypedCard key={index} containerStyle={styles.eventCard}>
                     <View style={styles.eventHeader}>
@@ -121,6 +158,10 @@ const LoadDetails: React.FC = () => {
               )}
             </View>
           )}
+        <LoadReferenceDetails
+          load={loadData}
+          documents={loadDocuments?.data || loadDocuments || loadData?.documents}
+        />
 
         
         <View style={styles.actionButtons}>
