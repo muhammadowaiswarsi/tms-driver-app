@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../lib/react-query';
 import { useDelete, useGet, usePatch, usePost } from './useApi';
 
@@ -22,14 +23,21 @@ export const useDriverAssignedLoads = (filters = {}): any => {
   );
 };
 
-export const useDriverLoadDecision = (loadId: string | number, options = {}) => {
+export const useDriverLoadDecision = (loadId: string | number, options: any = {}) => {
+  const queryClient = useQueryClient();
+  const { onSuccess: userOnSuccess, ...rest } = options;
+
   return usePatch(
     queryKeys.driverLoads.detail(loadId) as unknown as any[],
     `/driver/loads/${loadId}/decision`,
     {
       successMessage: 'Decision submitted successfully',
-      ...options,
-    }
+      ...rest,
+      onSuccess: (...args: any[]) => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.driverLoads.all });
+        userOnSuccess?.(...args);
+      },
+    },
   );
 };
 

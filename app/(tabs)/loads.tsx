@@ -1,5 +1,5 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -230,6 +230,7 @@ const LoadSearch: React.FC = () => {
 
   const {
     data: driverAcceptedLoads,
+    isLoading: isLoadingAccepted,
     refetch: refetchAccepted,
   } = useDriverAcceptedLoads();
 
@@ -640,9 +641,13 @@ const LoadSearch: React.FC = () => {
     }
   }, [driverActiveLoads]);
 
-  useEffect(() => {
-    refetchActive();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      refetchActive();
+      refetchAccepted();
+      refetchUpcoming();
+    }, [refetchActive, refetchAccepted, refetchUpcoming]),
+  );
 
   useEffect(() => {
     if (params.tab === "upcoming") {
@@ -659,6 +664,7 @@ const LoadSearch: React.FC = () => {
     }
     if (newValue === 0) {
       refetchActive();
+      refetchAccepted();
     }
   };
 
@@ -1192,7 +1198,7 @@ const LoadSearch: React.FC = () => {
         </View>
 
         
-        {isLoadingActive || isLoadingUpcoming ? (
+        {isLoadingActive || isLoadingUpcoming || (currentTab === 0 && isLoadingAccepted) ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator
               size="large"

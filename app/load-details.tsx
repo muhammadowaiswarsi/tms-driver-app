@@ -79,7 +79,10 @@ const LoadDetails: React.FC = () => {
 
   const updateLoadDecision = useDriverLoadDecision(loadId || "", {
     onSuccess: () => {
-      router.push("/(tabs)/loads");
+      router.replace({
+        pathname: "/(tabs)/loads",
+        params: { tab: "active" },
+      });
     },
     onError: () => {
       Alert.alert("Error", "Failed to update load decision");

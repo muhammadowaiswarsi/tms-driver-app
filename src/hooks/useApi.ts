@@ -89,8 +89,10 @@ export const usePut = (queryKey: any[], url: string, options: any = {}) => {
 
 export const usePatch = (queryKey: any[], url: string, options: any = {}) => {
   const queryClient = useQueryClient();
+  const { onSuccess: userOnSuccess, onError: userOnError, successMessage, ...restOptions } = options;
 
   return useMutation({
+    ...restOptions,
     mutationFn: async ({ id, data, queryParams }: { id?: string | number; data?: any; queryParams?: any }) => {
       let finalUrl = url;
       if (id) finalUrl += `/${id}`;
@@ -112,19 +114,13 @@ export const usePatch = (queryKey: any[], url: string, options: any = {}) => {
       if (queryKey) {
         queryClient.invalidateQueries({ queryKey });
       }
-      const successMessage = options.successMessage || 'Updated successfully';
-      handleMutationSuccess(successMessage);
-      if (options.onSuccess) {
-        options.onSuccess(data, variables, context);
-      }
+      handleMutationSuccess(successMessage || 'Updated successfully');
+      userOnSuccess?.(data, variables, context);
     },
     onError: (error, variables, context) => {
       handleQueryError(error);
-      if (options.onError) {
-        options.onError(error, variables, context);
-      }
+      userOnError?.(error, variables, context);
     },
-    ...options,
   });
 };
 
