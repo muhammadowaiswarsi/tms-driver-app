@@ -1,11 +1,17 @@
 import React from "react";
 import { Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Icon } from "react-native-elements";
 import { driverTheme } from "../theme/driverTheme";
 
 const displayValue = (value: unknown) => {
   const text = String(value ?? "").trim();
   return text || "—";
 };
+
+const formatDocumentType = (value: unknown) =>
+  String(value || "Document")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 
 const referenceRows: Array<[string, (load: any) => unknown]> = [
   ["Booking #", (load) => load?.shipmentInfo?.bookingNumber],
@@ -30,7 +36,15 @@ const DetailRow = ({ label, value }: { label: string; value: unknown }) => (
   </View>
 );
 
-const LoadReferenceDetails = ({ load, documents: documentGroups }: { load: any; documents?: any }) => {
+const LoadReferenceDetails = ({
+  load,
+  documents: documentGroups,
+  onUploadPress,
+}: {
+  load: any;
+  documents?: any;
+  onUploadPress?: () => void;
+}) => {
   const groups = Array.isArray(documentGroups)
     ? documentGroups
     : Array.isArray(documentGroups?.data)
@@ -41,8 +55,7 @@ const LoadReferenceDetails = ({ load, documents: documentGroups }: { load: any; 
   const documents = groups.flatMap((doc: any) =>
     (doc.files || []).map((file: any) => ({
       id: file.id,
-      name: file.file?.originalName || String(file.documentType || "Document").replace(/_/g, " "),
-      type: String(file.documentType || "Document").replace(/_/g, " "),
+      type: formatDocumentType(file.documentType),
       url: file.file?.presignedUrl || file.file?.url || "",
     })),
   );
@@ -58,22 +71,41 @@ const LoadReferenceDetails = ({ load, documents: documentGroups }: { load: any; 
       <DetailRow label="Type" value={load?.containerType?.label || load?.containerType?.type} />
       <DetailRow label="SSL" value={load?.ssl} />
 
-      <Text style={styles.heading}>Documents</Text>
+      <View style={styles.documentsHeader}>
+        <Text style={[styles.heading, styles.documentsHeading]}>Documents</Text>
+        {typeof onUploadPress === "function" ? (
+          <TouchableOpacity style={styles.uploadButton} onPress={onUploadPress} activeOpacity={0.85}>
+            <Icon name="cloud-upload" type="material" color="#fff" size={16} />
+            <Text style={styles.uploadButtonText}>Upload</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
       {documents.length === 0 ? (
         <Text style={styles.empty}>No documents have been attached.</Text>
       ) : (
         documents.map((doc: any) => (
           <View key={doc.id} style={styles.docRow}>
-            <View style={styles.docText}>
-              <Text style={styles.label}>{doc.type}</Text>
-              <Text style={styles.value}>{doc.name}</Text>
-            </View>
+            <Text style={styles.docType}>{doc.type}</Text>
             <TouchableOpacity
               disabled={!doc.url}
               onPress={() => Linking.openURL(doc.url)}
               style={[styles.viewButton, !doc.url && styles.viewButtonDisabled]}
+              activeOpacity={0.85}
             >
-              <Text style={styles.viewButtonText}>View</Text>
+              <Icon
+                name="visibility"
+                type="material"
+                color={doc.url ? "#fff" : driverTheme.colors.grey[600]}
+                size={16}
+              />
+              <Text
+                style={[
+                  styles.viewButtonText,
+                  !doc.url && { color: driverTheme.colors.grey[600] },
+                ]}
+              >
+                View
+              </Text>
             </TouchableOpacity>
           </View>
         ))
@@ -116,6 +148,32 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     color: driverTheme.colors.text.primary,
   },
+  documentsHeader: {
+    marginTop: 12,
+    marginBottom: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  documentsHeading: {
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  uploadButton: {
+    backgroundColor: driverTheme.colors.primary.main,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  uploadButtonText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -132,20 +190,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: "#f2f4f7",
   },
-  docText: { flex: 1 },
-  viewButton: {
-    borderWidth: 1,
-    borderColor: driverTheme.colors.primary.main,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  docType: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: driverTheme.colors.text.primary,
   },
-  viewButtonDisabled: { opacity: 0.4 },
-  viewButtonText: { color: driverTheme.colors.primary.main, fontSize: 12, fontWeight: "600" },
+  viewButton: {
+    backgroundColor: driverTheme.colors.primary.main,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  viewButtonDisabled: {
+    backgroundColor: driverTheme.colors.grey[300],
+  },
+  viewButtonText: { color: "#fff", fontSize: 12, fontWeight: "600" },
   freight: { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: "#f2f4f7" },
 });
 

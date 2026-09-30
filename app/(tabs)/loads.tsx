@@ -84,16 +84,42 @@ const normalizeDocumentType = (value: string) =>
   String(value || "")
     .trim()
     .toLowerCase()
-    .replace(/[\s-]+/g, "_");
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[\s-]+/g, "_")
+    .replace(/_/g, "");
 
+const getAttachedDocumentsByType = (
+  documentGroups: any,
+): Map<string, { url?: string }> => {
+  const groups = Array.isArray(documentGroups)
+    ? documentGroups
+    : Array.isArray(documentGroups?.data)
+      ? documentGroups.data
+      : [];
+  const byType = new Map<string, { url?: string }>();
+  groups.forEach((group: any) => {
+    (group?.files || []).forEach((file: any) => {
+      const type = normalizeDocumentType(String(file?.documentType || ""));
+      if (!type) return;
+      byType.set(type, {
+        url: file?.file?.presignedUrl || file?.file?.url || "",
+      });
+    });
+  });
+  return byType;
+};
+
+const getDocumentViewUrl = (doc: any) =>
+  String(
+    doc?.uploadData?.presignedUrl ||
+      doc?.uploadData?.url ||
+      doc?.viewUrl ||
+      "",
+  ).trim();
 
 const isProofOfDeliveryDoc = (doc: { type?: string }) => {
   const t = normalizeDocumentType(String(doc?.type || ""));
-  return (
-    t === "proof_of_delivery" ||
-    t === "proof_of_delivery_document" ||
-    t === "proofofdelivery"
-  );
+  return t === "proofofdelivery" || t === "proofofdeliverydocument";
 };
 
 const parseOrganizationDocumentRequirements = (documentTypeValue: any) => {
@@ -203,6 +229,8 @@ const LoadSearch: React.FC = () => {
   const [startChassisNumber, setStartChassisNumber] = useState("");
   const [isStartingLoad, setIsStartingLoad] = useState(false);
   const [startChassisPickerVisible, setStartChassisPickerVisible] = useState(false);
+  const [documentChassisPickerVisible, setDocumentChassisPickerVisible] =
+    useState(false);
   const [podEsignDialog, setPodEsignDialog] = useState(false);
   const [podEsignData, setPodEsignData] = useState<PodEsignFormValues>(() =>
     createDefaultPodEsignValues(),
@@ -210,6 +238,9 @@ const LoadSearch: React.FC = () => {
   const [esignInitialSnapshot, setEsignInitialSnapshot] =
     useState<PodEsignFormValues>(() => createDefaultPodEsignValues());
   const [documentDialog, setDocumentDialog] = useState(false);
+  const [documentDialogMode, setDocumentDialogMode] = useState<"upload" | "complete">(
+    "complete",
+  );
   const [completeDialog, setCompleteDialog] = useState(false);
   const [startLoadDialog, setStartLoadDialog] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -246,7 +277,8 @@ const LoadSearch: React.FC = () => {
     isLoading: isLoadingActive,
     refetch: refetchActive,
   } = useDriverActiveLoads();
-  const { data: activeLoadDocuments } = useLoadDocuments(driverActiveLoads?.data?.id);
+  const { data: activeLoadDocuments, refetch: refetchActiveLoadDocuments } =
+    useLoadDocuments(driverActiveLoads?.data?.id);
 
   const upcomingLoads = getUpcomingDriverLoads(driverUpcomingLoads?.data);
   const acceptedLoads = sortDriverLoadsByPickupDate(
@@ -364,6 +396,10 @@ const LoadSearch: React.FC = () => {
 
   const matchingStartChassis = chassisNumbers.filter((number: string) =>
     number.toLowerCase().includes(startChassisNumber.trim().toLowerCase()),
+  );
+
+  const matchingDocumentChassis = chassisNumbers.filter((number: string) =>
+    number.toLowerCase().includes(chassisNumber.trim().toLowerCase()),
   );
 
   const handleStartLoad = (load: any) => {
@@ -555,6 +591,7 @@ const LoadSearch: React.FC = () => {
         setPodSignPromptDialog(true);
         return;
       }
+      setDocumentDialogMode("complete");
       setDocumentDialog(true);
       return;
     }
@@ -569,6 +606,12 @@ const LoadSearch: React.FC = () => {
       setConfirmDialog(true);
       return;
     }
+    setDocumentDialogMode("complete");
+    setDocumentDialog(true);
+  };
+
+  const openDocumentUploadDialog = () => {
+    setDocumentDialogMode("upload");
     setDocumentDialog(true);
   };
 
@@ -681,24 +724,38 @@ const LoadSearch: React.FC = () => {
         }
       }
 
-      setDocuments((prev) =>
-        nextDocuments.map((doc) => {
+      setDocuments((prev) => {
+        const attachedByType = getAttachedDocumentsByType(activeLoadDocuments);
+        return nextDocuments.map((doc) => {
           const existingDoc = prev.find(
             (item) =>
               normalizeDocumentType(item.type) ===
               normalizeDocumentType(doc.type),
           );
+          const attached = attachedByType.get(
+            normalizeDocumentType(doc.type),
+          );
+          const alreadyAttached = Boolean(attached);
 
-          return existingDoc
-            ? {
-                ...doc,
-                uploaded: existingDoc.uploaded,
-                uploadedAt: existingDoc.uploadedAt,
-                uploadData: existingDoc.uploadData,
-              }
-            : doc;
-        }),
-      );
+          if (existingDoc) {
+            return {
+              ...doc,
+              uploaded: existingDoc.uploaded || alreadyAttached,
+              uploadedAt: existingDoc.uploadedAt,
+              uploadData: existingDoc.uploadData,
+              viewUrl: existingDoc.viewUrl || attached?.url || "",
+              persisted: Boolean(existingDoc.persisted) || alreadyAttached,
+            };
+          }
+
+          return {
+            ...doc,
+            uploaded: alreadyAttached,
+            viewUrl: attached?.url || "",
+            persisted: alreadyAttached,
+          };
+        });
+      });
       setChassisNumber(
         driverActiveLoads.data.chassis?.chassisNumber ||
           driverActiveLoads.data.otherChassisNumber ||
@@ -706,7 +763,7 @@ const LoadSearch: React.FC = () => {
       );
       setContainerNumber(driverActiveLoads.data.containerNumber || "");
     }
-  }, [driverActiveLoads]);
+  }, [driverActiveLoads, activeLoadDocuments]);
 
   useFocusEffect(
     useCallback(() => {
@@ -755,8 +812,57 @@ const LoadSearch: React.FC = () => {
     .filter((doc) => doc.required)
     .every((doc) => isDocumentDone(doc));
 
-  const handleCompleteLoad = () => {
+  const handleViewDocument = async (doc: any) => {
+    const url = getDocumentViewUrl(doc);
+    if (!url) {
+      Alert.alert("Error", "Document file is not available yet");
+      return;
+    }
+    try {
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert("Error", "Unable to open document");
+    }
+  };
+
+  const handleSaveChassisFromDocuments = async () => {
+    const loadId = driverActiveLoads?.data?.id;
+    const trimmedChassisNumber = chassisNumber.trim();
+    if (!loadId || !trimmedChassisNumber) {
+      Alert.alert("Required", "Enter a chassis number");
+      return false;
+    }
+    try {
+      await customAxios.patch(`/driver/loads/${loadId}/chassis`, {
+        chassisNumber: trimmedChassisNumber,
+      });
+      await refetchActive();
+      return true;
+    } catch (error: any) {
+      let errorMessage = "Failed to update chassis";
+      if (error?.response?.data?.message) {
+        const message = error.response.data.message;
+        errorMessage = Array.isArray(message) ? message[0] : String(message);
+      } else if (error?.message) {
+        errorMessage = String(error.message);
+      }
+      Alert.alert("Error", errorMessage);
+      return false;
+    }
+  };
+
+  const handleDocumentDialogDone = async () => {
+    const saved = await handleSaveChassisFromDocuments();
+    if (saved) {
+      setDocumentChassisPickerVisible(false);
+      setDocumentDialog(false);
+    }
+  };
+
+  const handleCompleteLoad = async () => {
     if (!allRequiredDocsUploaded) return;
+    const saved = await handleSaveChassisFromDocuments();
+    if (!saved) return;
     setCompleteDialog(true);
   };
 
@@ -817,6 +923,25 @@ const LoadSearch: React.FC = () => {
 
       if (uploadResponse.data.success && uploadResponse.data.data) {
         const uploadData = uploadResponse.data.data;
+        const loadId = driverActiveLoads?.data?.id;
+        const targetDoc = documents.find((d) => d.id === docId);
+
+        if (!loadId || !targetDoc) {
+          Alert.alert("Error", "Active load not found");
+          return;
+        }
+
+        await customAxios.post(`/driver/loads/${loadId}/documents`, {
+          documentType: targetDoc.type,
+          file: {
+            key: uploadData.key,
+            url: uploadData.url,
+            originalName: uploadData.originalName,
+            bucket: uploadData.bucket,
+            mimeType: uploadData.mimeType,
+            size: Number(uploadData.size) || 0,
+          },
+        });
 
         setDocuments((prev) =>
           prev.map((d) =>
@@ -826,11 +951,13 @@ const LoadSearch: React.FC = () => {
                   uploaded: true,
                   uploadedAt: new Date(),
                   uploadData: uploadData,
+                  viewUrl: uploadData.url || "",
+                  persisted: true,
                 }
               : d,
           ),
         );
-
+        await refetchActiveLoadDocuments();
       }
     } catch (error: any) {
       let errorMessage = "Failed to upload document";
@@ -871,10 +998,13 @@ const LoadSearch: React.FC = () => {
       if (containerNumber.trim()) {
         payload.containerNumber = containerNumber.trim();
       }
+      if (chassisNumber.trim()) {
+        payload.chassisNumber = chassisNumber.trim();
+      }
 
       documents.forEach((doc) => {
         if (isProofOfDeliveryDoc(doc)) {
-          if (!rawSig && doc.uploaded && doc.uploadData) {
+          if (!rawSig && doc.uploaded && doc.uploadData && !doc.persisted) {
             (payload as Record<string, unknown>)[doc.type] = {
               key: doc.uploadData.key,
               url: doc.uploadData.url,
@@ -886,7 +1016,8 @@ const LoadSearch: React.FC = () => {
           }
           return;
         }
-        if (doc.uploaded && doc.uploadData) {
+        // Mid-load uploads are already persisted on the load.
+        if (doc.uploaded && doc.uploadData && !doc.persisted) {
           (payload as Record<string, unknown>)[doc.type] = {
             key: doc.uploadData.key,
             url: doc.uploadData.url,
@@ -1263,6 +1394,7 @@ const LoadSearch: React.FC = () => {
         <LoadReferenceDetails
           load={driverActiveLoads?.data}
           documents={activeLoadDocuments?.data || activeLoadDocuments}
+          onUploadPress={openDocumentUploadDialog}
         />
       </ScrollView>
     );
@@ -1483,6 +1615,7 @@ const LoadSearch: React.FC = () => {
               inputContainerStyle={styles.documentInput}
               inputStyle={styles.documentInputText}
               containerStyle={styles.documentInputWrapper}
+              errorStyle={styles.documentInputError}
             />
             {startChassisPickerVisible && matchingStartChassis.length > 0 && (
               <View style={styles.dropdownList}>
@@ -1503,38 +1636,68 @@ const LoadSearch: React.FC = () => {
               </View>
             )}
             <View style={styles.dialogButtons}>
-              <Button
-                title={isStartingLoad ? "Starting..." : "Start Load"}
+              <TouchableOpacity
                 onPress={handleConfirmStartLoad}
                 disabled={!startChassisNumber.trim() || isStartingLoad}
-                loading={isStartingLoad}
-                buttonStyle={[
+                activeOpacity={0.85}
+                style={[
                   styles.dialogButton,
                   {
-                    backgroundColor: startChassisNumber.trim()
-                      ? driverTheme.colors.primary.main
-                      : driverTheme.colors.grey[300],
+                    backgroundColor:
+                      startChassisNumber.trim() && !isStartingLoad
+                        ? driverTheme.colors.primary.main
+                        : driverTheme.colors.grey[300],
+                    opacity:
+                      !startChassisNumber.trim() || isStartingLoad ? 0.9 : 1,
+                    alignItems: "center",
+                    justifyContent: "center",
                   },
                 ]}
-                titleStyle={styles.buttonTitle}
-              />
-              <Button
-                title="Cancel"
+              >
+                {isStartingLoad ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text
+                    style={[
+                      styles.buttonTitle,
+                      {
+                        color: startChassisNumber.trim()
+                          ? "#fff"
+                          : driverTheme.colors.grey[700],
+                      },
+                    ]}
+                  >
+                    Start Load
+                  </Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
                 onPress={() => {
                   if (isStartingLoad) return;
                   setStartLoadDialog(false);
                   setStartChassisPickerVisible(false);
                 }}
                 disabled={isStartingLoad}
-                buttonStyle={[
+                activeOpacity={0.85}
+                style={[
                   styles.dialogButton,
-                  { backgroundColor: driverTheme.colors.grey[200] },
+                  {
+                    backgroundColor: driverTheme.colors.grey[200],
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: isStartingLoad ? 0.6 : 1,
+                  },
                 ]}
-                titleStyle={[
-                  styles.buttonTitle,
-                  { color: driverTheme.colors.grey[600] },
-                ]}
-              />
+              >
+                <Text
+                  style={[
+                    styles.buttonTitle,
+                    { color: driverTheme.colors.grey[700] },
+                  ]}
+                >
+                  Cancel
+                </Text>
+              </TouchableOpacity>
             </View>
           </TypedCard>
         </View>
@@ -1633,7 +1796,11 @@ const LoadSearch: React.FC = () => {
         <View style={styles.dialogOverlay}>
           <View style={styles.documentDialogCard}>
             <View style={styles.documentDialogHeader}>
-              <Text style={styles.dialogTitle}>Complete Load</Text>
+              <Text style={styles.dialogTitle}>
+                {documentDialogMode === "complete"
+                  ? "Complete Load"
+                  : "Upload Documents"}
+              </Text>
               <TouchableOpacity
                 onPress={() => setDocumentDialog(false)}
                 style={styles.closeButton}
@@ -1653,15 +1820,42 @@ const LoadSearch: React.FC = () => {
               nestedScrollEnabled
             >
               <View style={styles.documentField}>
-                <Text style={styles.documentFieldLabel}>Container #</Text>
+                <Text style={styles.documentFieldLabel}>Chassis #</Text>
                 <Input
-                  placeholder="Container number"
-                  value={containerNumber}
-                  onChangeText={setContainerNumber}
+                  placeholder="Select or type chassis #"
+                  value={chassisNumber}
+                  onChangeText={(value) => {
+                    setChassisNumber(value);
+                    setDocumentChassisPickerVisible(true);
+                  }}
+                  onFocus={() => setDocumentChassisPickerVisible(true)}
                   inputContainerStyle={styles.documentInput}
                   inputStyle={styles.documentInputText}
                   containerStyle={styles.documentInputWrapper}
+                  errorStyle={styles.documentInputError}
                 />
+                {documentChassisPickerVisible &&
+                  matchingDocumentChassis.length > 0 && (
+                    <View style={styles.dropdownList}>
+                      <ScrollView
+                        style={styles.dropdownScroll}
+                        nestedScrollEnabled
+                      >
+                        {matchingDocumentChassis.map((number: string) => (
+                          <TouchableOpacity
+                            key={number}
+                            style={styles.dropdownItem}
+                            onPress={() => {
+                              setChassisNumber(number);
+                              setDocumentChassisPickerVisible(false);
+                            }}
+                          >
+                            <Text style={styles.dropdownItemText}>{number}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
               </View>
 
               
@@ -1669,6 +1863,7 @@ const LoadSearch: React.FC = () => {
               <View>
                 {documentsForComplete.map((raw) => {
                   const doc = { ...raw, uploaded: isDocumentDone(raw) };
+                  const viewUrl = getDocumentViewUrl(doc);
                   return (
                   <View
                     key={doc.id}
@@ -1714,40 +1909,62 @@ const LoadSearch: React.FC = () => {
                       </View>
                     </View>
                     {!doc.uploaded && (
-                      <Button
-                        title={
-                          uploadingDocId === doc.id ? "Uploading..." : "Upload"
-                        }
+                      <TouchableOpacity
                         onPress={() => handleFileUpload(doc.id)}
-                        loading={uploadingDocId === doc.id}
-                        buttonStyle={
-                          [
-                          ]
-                        }
-                        titleStyle={styles.uploadButtonTitle}
-                        icon={
-                          uploadingDocId !== doc.id ? (
+                        disabled={uploadingDocId === doc.id}
+                        activeOpacity={0.85}
+                        style={[
+                          styles.docActionButton,
+                          {
+                            backgroundColor: driverTheme.colors.primary.main,
+                            opacity: uploadingDocId === doc.id ? 0.7 : 1,
+                          },
+                        ]}
+                      >
+                        {uploadingDocId === doc.id ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <>
                             <Icon
                               name="cloud-upload"
                               type="material"
                               color="#fff"
                               size={18}
                             />
-                          ) : undefined
-                        }
-                        iconRight
-                      />
+                            <Text style={styles.docActionButtonText}>Upload</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
                     )}
                     {doc.uploaded && (
-                      <View style={styles.uploadedContainer}>
+                      <TouchableOpacity
+                        onPress={() => handleViewDocument(doc)}
+                        disabled={!viewUrl}
+                        activeOpacity={0.85}
+                        style={[
+                          styles.docActionButton,
+                          {
+                            backgroundColor: viewUrl
+                              ? driverTheme.colors.primary.main
+                              : driverTheme.colors.grey[300],
+                          },
+                        ]}
+                      >
                         <Icon
-                          name="check-circle"
+                          name="visibility"
                           type="material"
-                          color={driverTheme.colors.success.main}
-                          size={20}
+                          color={viewUrl ? "#fff" : driverTheme.colors.grey[600]}
+                          size={18}
                         />
-                        <Text style={styles.uploadedText}>Uploaded successfully</Text>
-                      </View>
+                        <Text
+                          style={[
+                            styles.docActionButtonText,
+                            !viewUrl && { color: driverTheme.colors.grey[600] },
+                          ]}
+                        >
+                          View
+                        </Text>
+                      </TouchableOpacity>
                     )}
                   </View>
                   );
@@ -1769,28 +1986,40 @@ const LoadSearch: React.FC = () => {
               )}
 
               <View style={styles.documentDialogButtons}>
-                <Button
-                  title="Confirm"
-                  onPress={handleCompleteLoad}
-                  disabled={!allRequiredDocsUploaded}
-                  buttonStyle={[
-                    styles.documentConfirmButton,
-                    {
-                      backgroundColor: allRequiredDocsUploaded
-                        ? driverTheme.colors.success.main
-                        : driverTheme.colors.grey[300],
-                    },
-                  ]}
-                  titleStyle={styles.buttonTitle}
-                  icon={
-                    <Icon
-                      name="assignment"
-                      type="material"
-                      color="#fff"
-                      size={16}
-                    />
-                  }
-                />
+                {documentDialogMode === "complete" ? (
+                  <Button
+                    title="Confirm"
+                    onPress={handleCompleteLoad}
+                    disabled={!allRequiredDocsUploaded}
+                    buttonStyle={[
+                      styles.documentConfirmButton,
+                      {
+                        backgroundColor: allRequiredDocsUploaded
+                          ? driverTheme.colors.success.main
+                          : driverTheme.colors.grey[300],
+                      },
+                    ]}
+                    titleStyle={styles.buttonTitle}
+                    icon={
+                      <Icon
+                        name="assignment"
+                        type="material"
+                        color="#fff"
+                        size={16}
+                      />
+                    }
+                  />
+                ) : (
+                  <Button
+                    title="Done"
+                    onPress={handleDocumentDialogDone}
+                    buttonStyle={[
+                      styles.documentConfirmButton,
+                      { backgroundColor: driverTheme.colors.primary.main },
+                    ]}
+                    titleStyle={styles.buttonTitle}
+                  />
+                )}
               </View>
             </ScrollView>
           </View>
@@ -2297,9 +2526,14 @@ const styles = StyleSheet.create({
   },
   dialogButtons: {
     gap: driverTheme.spacing.sm,
+    marginTop: driverTheme.spacing.md,
   },
   dialogButton: {
     borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    width: "100%",
+    minHeight: 44,
   },
   documentDialogCard: {
     borderRadius: 16,
@@ -2350,12 +2584,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
     minHeight: 48,
   },
+  documentInputWrapper: {
+    paddingHorizontal: 0,
+    paddingBottom: 0,
+    marginBottom: 0,
+    marginVertical: 0,
+  },
+  documentInputError: {
+    height: 0,
+    margin: 0,
+    padding: 0,
+  },
+  documentInput: {
+    borderWidth: 1,
+    borderColor: driverTheme.colors.divider,
+    borderRadius: 8,
+    paddingHorizontal: driverTheme.spacing.sm,
+    backgroundColor: driverTheme.colors.background.paper,
+    minHeight: 48,
+  },
+  documentInputText: {
+    fontSize: 16,
+    color: driverTheme.colors.text.primary,
+  },
   dropdownList: {
     backgroundColor: driverTheme.colors.background.paper,
     borderWidth: 1,
     borderColor: driverTheme.colors.divider,
     borderRadius: 8,
-    marginTop: 4,
+    marginTop: 0,
+    marginBottom: driverTheme.spacing.md,
     maxHeight: 200,
     elevation: 5,
     shadowColor: "#000",
@@ -2391,22 +2649,6 @@ const styles = StyleSheet.create({
   },
   selectPlaceholder: {
     color: driverTheme.colors.text.secondary,
-  },
-  documentInput: {
-    borderWidth: 1,
-    borderColor: driverTheme.colors.divider,
-    borderRadius: 8,
-    paddingHorizontal: driverTheme.spacing.sm,
-    backgroundColor: driverTheme.colors.background.paper,
-    minHeight: 48,
-  },
-  documentInputWrapper: {
-    paddingHorizontal: 0,
-    marginBottom: 0,
-  },
-  documentInputText: {
-    fontSize: 16,
-    color: driverTheme.colors.text.primary,
   },
   documentSectionTitle: {
     fontSize: 14,
@@ -2458,6 +2700,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     marginLeft: 4,
+  },
+  docActionButton: {
+    marginTop: 8,
+    borderRadius: 10,
+    minHeight: 40,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  docActionButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
   uploadedContainer: {
     flexDirection: "row",
