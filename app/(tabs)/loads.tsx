@@ -519,21 +519,37 @@ const LoadSearch: React.FC = () => {
   };
 
   const openExternalMaps = async (address: string) => {
-    const query = encodeURIComponent(address);
-    const url =
-      Platform.OS === "ios"
-        ? `https://maps.apple.com/?daddr=${query}&dirflg=d`
-        : `https://www.google.com/maps/dir/?api=1&destination=${query}&travelmode=driving`;
-    try {
-      const canOpen = await Linking.canOpenURL(url);
-      if (!canOpen) {
-        Alert.alert("Error", "Unable to open maps on this device.");
-        return;
-      }
-      await Linking.openURL(url);
-    } catch {
-      Alert.alert("Error", "Unable to open maps on this device.");
+    const trimmed = String(address || "").trim();
+    if (!trimmed) {
+      Alert.alert("Error", "No destination address found for this stop.");
+      return;
     }
+
+    const query = encodeURIComponent(trimmed);
+    const urls =
+      Platform.OS === "ios"
+        ? [
+            `maps://?daddr=${query}&dirflg=d`,
+            `https://maps.apple.com/?daddr=${query}&dirflg=d`,
+            `https://www.google.com/maps/dir/?api=1&destination=${query}&travelmode=driving`,
+          ]
+        : [
+            `google.navigation:q=${query}`,
+            `geo:0,0?q=${query}`,
+            `https://www.google.com/maps/dir/?api=1&destination=${query}&travelmode=driving`,
+            `https://maps.google.com/?daddr=${query}&directionsmode=driving`,
+          ];
+
+    for (const url of urls) {
+      try {
+        await Linking.openURL(url);
+        return;
+      } catch {
+        // Try the next maps URL / scheme.
+      }
+    }
+
+    Alert.alert("Error", "Unable to open maps on this device.");
   };
 
   const getEventButtonStates = (event: Event, eventIndex: number) => {
