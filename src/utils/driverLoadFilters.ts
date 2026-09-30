@@ -67,6 +67,46 @@ export function formatPickupDateTime(load: PickupLoadShape): string {
   return formatApiDateTime(value);
 }
 
+type StopLocation = {
+  kind?: string | null;
+  location?: string | null;
+  address?: string | null;
+  name?: string | null;
+} | null | undefined;
+
+function normalizeLocationList(value: unknown): StopLocation[] {
+  if (Array.isArray(value)) return value;
+  if (value) return [value as StopLocation];
+  return [];
+}
+
+function locationText(entry: StopLocation): string {
+  if (!entry) return "";
+  return String(entry.location || entry.address || entry.name || "").trim();
+}
+
+export function getLoadPickupAddress(load: {
+  pickupLocation?: unknown;
+} | null | undefined): string {
+  const list = normalizeLocationList(load?.pickupLocation);
+  if (!list.length) return "--";
+  const match =
+    list.find((item) => String(item?.kind || "").toLowerCase() === "pickup") ||
+    list[0];
+  return locationText(match) || "--";
+}
+
+export function getLoadDeliveryAddress(load: {
+  deliveryLocation?: unknown;
+} | null | undefined): string {
+  const list = normalizeLocationList(load?.deliveryLocation);
+  if (!list.length) return "--";
+  const match =
+    list.find((item) => String(item?.kind || "").toLowerCase() === "delivery") ||
+    list[0];
+  return locationText(match) || "--";
+}
+
 function isPastPickupLoad(load: PickupLoadShape, referenceDate: Date = new Date()): boolean {
   const schedule = getPickupScheduleBounds(load);
   if (!schedule) return false;

@@ -167,6 +167,7 @@ const LoadDetails: React.FC = () => {
         />
 
         
+        {loadData?.driverDecision !== "ACCEPTED" && (
         <View style={styles.actionButtons}>
           <Button
             title={isAccepting ? "Accepting..." : "Accept Load"}
@@ -183,6 +184,7 @@ const LoadDetails: React.FC = () => {
             titleStyle={styles.rejectButtonTitle}
           />
         </View>
+        )}
       </ScrollView>
 
       

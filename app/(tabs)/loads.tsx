@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { Button, Card, Icon, Input } from "react-native-elements";
@@ -42,7 +43,7 @@ import {
 import { customAxios } from "../../src/services/api";
 import { driverTheme } from "../../src/theme/driverTheme";
 import { Event } from "../../src/types/driver.types";
-import { formatPickupDateTime, getUpcomingDriverLoads, sortDriverLoadsByPickupDate } from "../../src/utils/driverLoadFilters";
+import { formatPickupDateTime, getLoadDeliveryAddress, getLoadPickupAddress, getUpcomingDriverLoads, sortDriverLoadsByPickupDate } from "../../src/utils/driverLoadFilters";
 
 
 const TypedCard = Card as any;
@@ -184,6 +185,8 @@ const parseOrganizationDocumentRequirements = (documentTypeValue: any) => {
 const LoadSearch: React.FC = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { width: windowWidth } = useWindowDimensions();
+  const acceptedDetailItemWidth = windowWidth >= 420 ? "33.333%" : "100%";
   const [currentTab, setCurrentTab] = useState(() => {
     
     return params.tab === "upcoming" ? 1 : 0;
@@ -838,28 +841,84 @@ const LoadSearch: React.FC = () => {
     }
   };
 
-  const renderAcceptedLoadCard = (load: any) => (
-    <TypedCard key={load.id} containerStyle={styles.upcomingCard}>
-      <View style={styles.upcomingHeader}>
-        <Text style={styles.upcomingLoadNumber}>{load.loadNumber}</Text>
-        <View style={[styles.upcomingChip, { backgroundColor: driverTheme.colors.primary.main }]}>
-          <Text style={[styles.upcomingChipText, { color: "#fff" }]}>Accepted</Text>
+  const renderAcceptedLoadCard = (load: any) => {
+    const detailItems = [
+      { label: "Container", value: load.containerNumber || "--" },
+      {
+        label: "Route Type",
+        value: load.route?.replace(/_/g, " ").toUpperCase() || "--",
+      },
+      { label: "Pickup", value: formatPickupDateTime(load) },
+      { label: "Load Type", value: load.loadType?.toUpperCase() || "--" },
+      { label: "Pickup Location", value: getLoadPickupAddress(load) },
+      { label: "Delivery Address", value: getLoadDeliveryAddress(load) },
+      { label: "SCAC", value: load.scac || "--" },
+      { label: "SSL", value: load.ssl || "--" },
+      {
+        label: "BOL",
+        value:
+          load.shipmentInfo?.billOfLading ||
+          load.shipmentInfo?.masterBillOfLading ||
+          load.shipmentInfo?.houseBillOfLading ||
+          "--",
+      },
+    ];
+
+    return (
+      <TypedCard key={load.id} containerStyle={styles.acceptedCard}>
+        <View style={styles.acceptedHeader}>
+          <Text style={styles.acceptedLoadNumber}>{load.loadNumber}</Text>
+          <View
+            style={[
+              styles.acceptedChip,
+              { backgroundColor: driverTheme.colors.primary.main },
+            ]}
+          >
+            <Text style={styles.acceptedChipText}>Accepted</Text>
+          </View>
         </View>
-      </View>
-      <Text style={styles.loadDetail}>Pickup: {formatPickupDateTime(load)}</Text>
-      <Text style={[styles.loadDetail, { marginBottom: 12 }]}>
-        Container #: {load.containerNumber || "--"}
-      </Text>
-      {load.status === "PENDING" || load.status === "DISPATCHED" || !load.status ? (
-        <Button
-          title="Start Load"
-          onPress={() => handleStartLoad(load)}
-          buttonStyle={[styles.startButton, { backgroundColor: driverTheme.colors.success.dark, marginTop: 0 }]}
-          titleStyle={styles.buttonTitle}
-        />
-      ) : null}
-    </TypedCard>
-  );
+        <View style={styles.acceptedDetails}>
+          <View style={styles.acceptedGrid}>
+            {detailItems.map((item) => (
+              <View
+                key={item.label}
+                style={[styles.acceptedGridItem, { width: acceptedDetailItemWidth }]}
+              >
+                <Text style={styles.acceptedDetailLabel}>{item.label}</Text>
+                <Text style={styles.acceptedDetailValue}>{item.value}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+        <View style={styles.acceptedActionsRow}>
+          {load.status === "PENDING" ||
+          load.status === "DISPATCHED" ||
+          !load.status ? (
+            <Button
+              title="Start Load"
+              onPress={() => handleStartLoad(load)}
+              containerStyle={styles.acceptedActionButton}
+              buttonStyle={[
+                styles.acceptedActionBtn,
+                { backgroundColor: driverTheme.colors.success.dark },
+              ]}
+              titleStyle={styles.acceptedActionTitle}
+            />
+          ) : null}
+          <Button
+            title="Show Details"
+            onPress={() => handleShowDetails(load)}
+            containerStyle={styles.acceptedActionButton}
+            buttonStyle={[
+              styles.acceptedActionBtn,
+              { backgroundColor: driverTheme.colors.primary.main },
+            ]}
+            titleStyle={styles.acceptedActionTitle}
+          />
+        </View>
+      </TypedCard>
+    );
+  };
 
   const renderActiveTab = () => {
     if (!driverActiveLoads?.data) {
@@ -1127,6 +1186,12 @@ const LoadSearch: React.FC = () => {
                 <Text style={styles.upcomingDetailLabel}>Route Type</Text>
                 <Text style={styles.upcomingDetailValue}>
                   {load.route?.replace(/_/g, " ").toUpperCase() || "--"}
+                </Text>
+              </View>
+              <View style={styles.upcomingDetailRow}>
+                <Text style={styles.upcomingDetailLabel}>Pickup</Text>
+                <Text style={styles.upcomingDetailValue}>
+                  {formatPickupDateTime(load)}
                 </Text>
               </View>
               <View style={styles.upcomingDetailRow}>
@@ -1937,6 +2002,74 @@ const styles = StyleSheet.create({
   },
   detailsButton: {
     borderRadius: 8,
+  },
+  acceptedCard: {
+    borderRadius: 12,
+    marginBottom: driverTheme.spacing.md,
+    width: "100%",
+  },
+  acceptedHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  acceptedLoadNumber: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: driverTheme.colors.primary.main,
+    flexShrink: 1,
+    marginRight: 8,
+  },
+  acceptedChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  acceptedChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  acceptedDetails: {
+    backgroundColor: driverTheme.colors.grey[50],
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  acceptedGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -6,
+  },
+  acceptedGridItem: {
+    paddingHorizontal: 6,
+    marginBottom: 10,
+  },
+  acceptedDetailLabel: {
+    fontSize: 12,
+    color: driverTheme.colors.text.secondary,
+    marginBottom: 2,
+  },
+  acceptedDetailValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: driverTheme.colors.text.primary,
+  },
+  acceptedActionsRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  acceptedActionButton: {
+    flex: 1,
+  },
+  acceptedActionBtn: {
+    borderRadius: 8,
+    paddingVertical: 12,
+  },
+  acceptedActionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   buttonTitle: {
     fontSize: 16,
