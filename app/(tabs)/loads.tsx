@@ -1,5 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -187,6 +187,8 @@ const LoadSearch: React.FC = () => {
   const params = useLocalSearchParams();
   const { width: windowWidth } = useWindowDimensions();
   const acceptedDetailItemWidth = windowWidth >= 420 ? "33.333%" : "100%";
+  const [activeProgressOpen, setActiveProgressOpen] = useState(false);
+  const previousActiveLoadIdRef = useRef<string | null>(null);
   const [currentTab, setCurrentTab] = useState(() => {
     
     return params.tab === "upcoming" ? 1 : 0;
@@ -248,6 +250,22 @@ const LoadSearch: React.FC = () => {
   const acceptedLoads = sortDriverLoadsByPickupDate(
     Array.isArray(driverAcceptedLoads?.data) ? driverAcceptedLoads.data : [],
   );
+
+  const inProgressLoadId = driverActiveLoads?.data?.id || null;
+  const hasLoadInProgress = Boolean(inProgressLoadId);
+
+  useEffect(() => {
+    const activeId = inProgressLoadId ? String(inProgressLoadId) : null;
+    if (!activeId) {
+      setActiveProgressOpen(false);
+      previousActiveLoadIdRef.current = null;
+      return;
+    }
+    if (previousActiveLoadIdRef.current !== activeId) {
+      setActiveProgressOpen(true);
+    }
+    previousActiveLoadIdRef.current = activeId;
+  }, [inProgressLoadId]);
 
   const loadId = driverActiveLoads?.data?.id;
   const [currentLocation, setCurrentLocation] = useState<{
@@ -347,6 +365,13 @@ const LoadSearch: React.FC = () => {
   );
 
   const handleStartLoad = (load: any) => {
+    if (hasLoadInProgress && String(load?.id) !== String(inProgressLoadId)) {
+      Alert.alert(
+        "Load in progress",
+        "Finish the current in-progress load before starting another.",
+      );
+      return;
+    }
     setLoadToStartId(load?.id || "");
     setStartChassisNumber(
       load?.chassis?.chassisNumber || load?.otherChassisNumber || "",
@@ -354,6 +379,12 @@ const LoadSearch: React.FC = () => {
     setIsStartingLoad(false);
     setStartChassisPickerVisible(false);
     setStartLoadDialog(true);
+  };
+
+  const handleOpenActiveProgress = () => {
+    if (!hasLoadInProgress) return;
+    setActiveProgressOpen(true);
+    setCurrentTab(0);
   };
 
   const handleConfirmStartLoad = async () => {
@@ -373,6 +404,7 @@ const LoadSearch: React.FC = () => {
       setStartLoadDialog(false);
       setStartChassisNumber("");
       setStartChassisPickerVisible(false);
+      setActiveProgressOpen(true);
     } catch {
       Alert.alert("Error", "Error starting load");
     } finally {
@@ -842,6 +874,14 @@ const LoadSearch: React.FC = () => {
   };
 
   const renderAcceptedLoadCard = (load: any) => {
+    const isCurrentInProgress =
+      hasLoadInProgress && String(load.id) === String(inProgressLoadId);
+    const canStartThisLoad =
+      !hasLoadInProgress &&
+      (load.status === "PENDING" ||
+        load.status === "DISPATCHED" ||
+        !load.status);
+
     const detailItems = [
       { label: "Container", value: load.containerNumber || "--" },
       {
@@ -865,7 +905,13 @@ const LoadSearch: React.FC = () => {
     ];
 
     return (
-      <TypedCard key={load.id} containerStyle={styles.acceptedCard}>
+      <TypedCard
+        key={load.id}
+        containerStyle={[
+          styles.acceptedCard,
+          isCurrentInProgress ? styles.acceptedCardInProgress : null,
+        ]}
+      >
         <View style={styles.acceptedHeader}>
           <Text style={styles.acceptedLoadNumber}>{load.loadNumber}</Text>
           <View
@@ -874,7 +920,9 @@ const LoadSearch: React.FC = () => {
               { backgroundColor: driverTheme.colors.primary.main },
             ]}
           >
-            <Text style={styles.acceptedChipText}>Accepted</Text>
+            <Text style={styles.acceptedChipText}>
+              {isCurrentInProgress ? "In Progress" : "Accepted"}
+            </Text>
           </View>
         </View>
         <View style={styles.acceptedDetails}>
@@ -891,12 +939,10 @@ const LoadSearch: React.FC = () => {
           </View>
         </View>
         <View style={styles.acceptedActionsRow}>
-          {load.status === "PENDING" ||
-          load.status === "DISPATCHED" ||
-          !load.status ? (
+          {isCurrentInProgress ? (
             <Button
-              title="Start Load"
-              onPress={() => handleStartLoad(load)}
+              title="Continue Load"
+              onPress={handleOpenActiveProgress}
               containerStyle={styles.acceptedActionButton}
               buttonStyle={[
                 styles.acceptedActionBtn,
@@ -904,7 +950,31 @@ const LoadSearch: React.FC = () => {
               ]}
               titleStyle={styles.acceptedActionTitle}
             />
-          ) : null}
+          ) : (
+            <Button
+              title="Start Load"
+              onPress={() => handleStartLoad(load)}
+              disabled={!canStartThisLoad}
+              containerStyle={styles.acceptedActionButton}
+              buttonStyle={[
+                styles.acceptedActionBtn,
+                {
+                  backgroundColor: canStartThisLoad
+                    ? driverTheme.colors.success.dark
+                    : driverTheme.colors.grey[300],
+                },
+              ]}
+              titleStyle={[
+                styles.acceptedActionTitle,
+                !canStartThisLoad
+                  ? { color: driverTheme.colors.grey[600] }
+                  : null,
+              ]}
+              disabledStyle={{
+                backgroundColor: driverTheme.colors.grey[300],
+              }}
+            />
+          )}
           <Button
             title="Show Details"
             onPress={() => handleShowDetails(load)}
@@ -916,12 +986,17 @@ const LoadSearch: React.FC = () => {
             titleStyle={styles.acceptedActionTitle}
           />
         </View>
+        {hasLoadInProgress && !isCurrentInProgress ? (
+          <Text style={styles.acceptedHintText}>
+            Another load is in progress. Finish it before starting this one.
+          </Text>
+        ) : null}
       </TypedCard>
     );
   };
 
   const renderActiveTab = () => {
-    if (!driverActiveLoads?.data) {
+    if (!(hasLoadInProgress && activeProgressOpen)) {
       if (acceptedLoads.length > 0) {
         return (
           <ScrollView style={styles.scrollView} contentContainerStyle={styles.upcomingContent}>
@@ -961,7 +1036,20 @@ const LoadSearch: React.FC = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        
+        <TouchableOpacity
+          style={styles.progressBackRow}
+          onPress={() => setActiveProgressOpen(false)}
+          activeOpacity={0.75}
+        >
+          <Icon
+            name="arrow-back"
+            type="material"
+            color={driverTheme.colors.text.secondary}
+            size={20}
+          />
+          <Text style={styles.progressBackText}>Active Loads</Text>
+        </TouchableOpacity>
+
         <CustomMapView
           height={300}
           markers={mapMarkers}
@@ -2008,6 +2096,10 @@ const styles = StyleSheet.create({
     marginBottom: driverTheme.spacing.md,
     width: "100%",
   },
+  acceptedCardInProgress: {
+    borderWidth: 1,
+    borderColor: driverTheme.colors.primary.main,
+  },
   acceptedHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -2070,6 +2162,24 @@ const styles = StyleSheet.create({
   acceptedActionTitle: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  acceptedHintText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: driverTheme.colors.text.secondary,
+  },
+  progressBackRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: driverTheme.spacing.md,
+    paddingTop: driverTheme.spacing.sm,
+    paddingBottom: driverTheme.spacing.xs,
+    gap: 6,
+  },
+  progressBackText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: driverTheme.colors.text.secondary,
   },
   buttonTitle: {
     fontSize: 16,
