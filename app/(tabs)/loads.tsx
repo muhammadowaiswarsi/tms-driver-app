@@ -1084,8 +1084,8 @@ const LoadSearch: React.FC = () => {
     ];
 
     return (
+      <View key={load.id} style={styles.loadCardWrap}>
       <TypedCard
-        key={load.id}
         containerStyle={[
           styles.acceptedCard,
           isCurrentInProgress ? styles.acceptedCardInProgress : null,
@@ -1171,6 +1171,7 @@ const LoadSearch: React.FC = () => {
           </Text>
         ) : null}
       </TypedCard>
+      </View>
     );
   };
 
@@ -1439,7 +1440,8 @@ const LoadSearch: React.FC = () => {
         </View>
       ) : (
         upcomingLoads.map((load: any) => (
-          <TypedCard key={load.id} containerStyle={styles.upcomingCard}>
+          <View key={load.id} style={styles.loadCardWrap}>
+          <TypedCard containerStyle={styles.upcomingCard}>
             <View style={styles.upcomingHeader}>
               <Text style={styles.upcomingLoadNumber}>{load.loadNumber}</Text>
               <View
@@ -1520,6 +1522,7 @@ const LoadSearch: React.FC = () => {
               titleStyle={styles.buttonTitle}
             />
           </TypedCard>
+          </View>
         ))
       )}
     </ScrollView>
@@ -2178,8 +2181,11 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   upcomingContent: {
-    padding: driverTheme.spacing.md,
+    paddingHorizontal: driverTheme.spacing.md,
+    paddingTop: driverTheme.spacing.md,
     paddingBottom: 100,
+    alignItems: "center",
+    width: "100%",
   },
   upcomingContentEmpty: {
     flexGrow: 1,
@@ -2187,6 +2193,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: driverTheme.spacing.xl,
     minHeight: "100%",
+  },
+  loadCardWrap: {
+    width: "100%",
+    alignSelf: "center",
   },
   loadingContainer: {
     flex: 1,
@@ -2351,7 +2361,14 @@ const styles = StyleSheet.create({
   },
   upcomingCard: {
     borderRadius: 12,
+    marginTop: 0,
     marginBottom: driverTheme.spacing.md,
+    marginLeft: 0,
+    marginRight: 0,
+    width: "100%",
+    alignSelf: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
   upcomingHeader: {
     flexDirection: "row",
@@ -2397,8 +2414,14 @@ const styles = StyleSheet.create({
   },
   acceptedCard: {
     borderRadius: 12,
+    marginTop: 0,
     marginBottom: driverTheme.spacing.md,
+    marginLeft: 0,
+    marginRight: 0,
     width: "100%",
+    alignSelf: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
   acceptedCardInProgress: {
     borderWidth: 1,
