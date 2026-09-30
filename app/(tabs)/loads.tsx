@@ -4,6 +4,8 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -466,6 +468,36 @@ const LoadSearch: React.FC = () => {
         event.status === "PENDING" || event.status === "ARRIVED",
     );
     return currentIndex !== -1 ? currentIndex : events.length - 1;
+  };
+
+  // Next stop the driver still needs to reach (or finish at).
+  const getNavigationDestination = () => {
+    const events = getAllEvents();
+    const current =
+      events.find(
+        (event: Event) =>
+          event.status === "PENDING" || event.status === "ARRIVED",
+      ) || events[events.length - 1];
+    const address = String(current?.location || "").trim();
+    return address || null;
+  };
+
+  const openExternalMaps = async (address: string) => {
+    const query = encodeURIComponent(address);
+    const url =
+      Platform.OS === "ios"
+        ? `https://maps.apple.com/?daddr=${query}&dirflg=d`
+        : `https://www.google.com/maps/dir/?api=1&destination=${query}&travelmode=driving`;
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (!canOpen) {
+        Alert.alert("Error", "Unable to open maps on this device.");
+        return;
+      }
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert("Error", "Unable to open maps on this device.");
+    }
   };
 
   const getEventButtonStates = (event: Event, eventIndex: number) => {
@@ -1030,6 +1062,13 @@ const LoadSearch: React.FC = () => {
 
     const events = getAllEvents();
     const currentEventIndex = getCurrentEventIndex();
+    const loadStarted =
+      Boolean(driverActiveLoads?.data?.status) &&
+      driverActiveLoads.data.status !== "PENDING" &&
+      driverActiveLoads.data.status !== "DISPATCHED";
+    const navigationDestination = loadStarted
+      ? getNavigationDestination()
+      : null;
 
     return (
       <ScrollView
@@ -1056,6 +1095,26 @@ const LoadSearch: React.FC = () => {
           currentLocation={currentLocation}
           showRoute
         />
+
+        {navigationDestination ? (
+          <View style={styles.navigateButtonWrap}>
+            <Button
+              title="Navigate"
+              onPress={() => openExternalMaps(navigationDestination)}
+              buttonStyle={styles.navigateButton}
+              titleStyle={styles.navigateButtonTitle}
+              icon={
+                <Icon
+                  name="navigation"
+                  type="material"
+                  color="#fff"
+                  size={18}
+                  style={{ marginRight: 6 }}
+                />
+              }
+            />
+          </View>
+        ) : null}
 
         
         <View style={styles.eventsContainer}>
@@ -2180,6 +2239,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: driverTheme.colors.text.secondary,
+  },
+  navigateButtonWrap: {
+    paddingHorizontal: driverTheme.spacing.sm,
+    paddingTop: driverTheme.spacing.sm,
+  },
+  navigateButton: {
+    backgroundColor: "#1a73e8",
+    borderRadius: 8,
+    paddingVertical: 12,
+  },
+  navigateButtonTitle: {
+    fontSize: 15,
+    fontWeight: "600",
   },
   buttonTitle: {
     fontSize: 16,
