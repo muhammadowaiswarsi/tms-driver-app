@@ -222,6 +222,7 @@ const LoadSearch: React.FC = () => {
     return params.tab === "upcoming" ? 1 : 0;
   });
   const [confirmDialog, setConfirmDialog] = useState(false);
+  const [mapsDestination, setMapsDestination] = useState<string | null>(null);
   const [podSignPromptDialog, setPodSignPromptDialog] = useState(false);
   const [podSignPurpose, setPodSignPurpose] = useState<"deliver" | "complete">("deliver");
   const [hasPodSignature, setHasPodSignature] = useState(false);
@@ -518,38 +519,36 @@ const LoadSearch: React.FC = () => {
     return address || null;
   };
 
-  const openExternalMaps = async (address: string) => {
+  const openMapUrl = async (url: string) => {
+    try {
+      await Linking.openURL(url);
+    } catch {
+      // Ignore — caller may try another URL.
+    }
+  };
+
+  const openExternalMaps = (address: string) => {
     const trimmed = String(address || "").trim();
-    if (!trimmed) {
-      Alert.alert("Error", "No destination address found for this stop.");
+    if (!trimmed) return;
+    if (Platform.OS === "ios") {
+      setMapsDestination(trimmed);
       return;
     }
+    const q = encodeURIComponent(trimmed);
+    void openMapUrl(`https://www.google.com/maps/dir/?api=1&destination=${q}&travelmode=driving`);
+  };
 
-    const query = encodeURIComponent(trimmed);
-    const urls =
-      Platform.OS === "ios"
-        ? [
-            `maps://?daddr=${query}&dirflg=d`,
-            `https://maps.apple.com/?daddr=${query}&dirflg=d`,
-            `https://www.google.com/maps/dir/?api=1&destination=${query}&travelmode=driving`,
-          ]
-        : [
-            `google.navigation:q=${query}`,
-            `geo:0,0?q=${query}`,
-            `https://www.google.com/maps/dir/?api=1&destination=${query}&travelmode=driving`,
-            `https://maps.google.com/?daddr=${query}&directionsmode=driving`,
-          ];
-
-    for (const url of urls) {
-      try {
-        await Linking.openURL(url);
-        return;
-      } catch {
-        // Try the next maps URL / scheme.
-      }
+  const openChosenMapsApp = (provider: "apple" | "google") => {
+    const q = encodeURIComponent(mapsDestination || "");
+    setMapsDestination(null);
+    if (!q) return;
+    if (provider === "apple") {
+      void openMapUrl(`http://maps.apple.com/?daddr=${q}&dirflg=d`);
+      return;
     }
-
-    Alert.alert("Error", "Unable to open maps on this device.");
+    void openMapUrl(
+      `https://www.google.com/maps/dir/?api=1&destination=${q}&travelmode=driving`,
+    );
   };
 
   const getEventButtonStates = (event: Event, eventIndex: number) => {
@@ -1613,6 +1612,72 @@ const LoadSearch: React.FC = () => {
           </TypedCard>
         </View>
       )}
+
+      {mapsDestination ? (
+        <View style={styles.dialogOverlay}>
+          <TypedCard containerStyle={styles.dialogCard}>
+            <Text style={styles.dialogTitle}>Open Navigation</Text>
+            <Text style={styles.dialogMessage}>
+              Choose which maps app you want to use.
+            </Text>
+            <View style={styles.dialogButtons}>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => openChosenMapsApp("apple")}
+                style={[
+                  styles.dialogButton,
+                  {
+                    backgroundColor: driverTheme.colors.primary.main,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  },
+                ]}
+              >
+                <Text style={[styles.buttonTitle, { color: "#fff" }]}>
+                  Apple Maps
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => openChosenMapsApp("google")}
+                style={[
+                  styles.dialogButton,
+                  {
+                    backgroundColor: driverTheme.colors.success.dark,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  },
+                ]}
+              >
+                <Text style={[styles.buttonTitle, { color: "#fff" }]}>
+                  Google Maps
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => setMapsDestination(null)}
+                style={[
+                  styles.dialogButton,
+                  {
+                    backgroundColor: driverTheme.colors.grey[200],
+                    alignItems: "center",
+                    justifyContent: "center",
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.buttonTitle,
+                    { color: driverTheme.colors.grey[700] },
+                  ]}
+                >
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </TypedCard>
+        </View>
+      ) : null}
 
       
       {startLoadDialog && (
