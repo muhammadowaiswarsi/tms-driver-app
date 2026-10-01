@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Driver Mobile App",
-    "slug": "driver-mobile-app",
+    "name": "FreightOperator",
+    "slug": "freight-operator",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -19,9 +19,9 @@
       "bundleIdentifier": "com.driverapp.mobile",
       "infoPlist": {
         "UIBackgroundModes": ["location"],
-        "NSLocationWhenInUseUsageDescription": "Allow Driver Mobile App to share your location with dispatch while on shift.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow Driver Mobile App to share your location with dispatch even when the app is in the background.",
-        "NSLocationAlwaysUsageDescription": "Allow Driver Mobile App to share your location with dispatch even when the app is in the background."
+        "NSLocationWhenInUseUsageDescription": "Allow FreightOperator to share your location with dispatch while on shift.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow FreightOperator to share your location with dispatch even when the app is in the background.",
+        "NSLocationAlwaysUsageDescription": "Allow FreightOperator to share your location with dispatch even when the app is in the background."
       }
     },
     "android": {
@@ -56,9 +56,9 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Driver Mobile App to share your location with dispatch even when the app is in the background.",
-          "locationAlwaysPermission": "Allow Driver Mobile App to share your location with dispatch even when the app is in the background.",
-          "locationWhenInUsePermission": "Allow Driver Mobile App to share your location with dispatch while on shift.",
+          "locationAlwaysAndWhenInUsePermission": "Allow FreightOperator to share your location with dispatch even when the app is in the background.",
+          "locationAlwaysPermission": "Allow FreightOperator to share your location with dispatch even when the app is in the background.",
+          "locationWhenInUsePermission": "Allow FreightOperator to share your location with dispatch while on shift.",
           "isIosBackgroundLocationEnabled": true,
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
