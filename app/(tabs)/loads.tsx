@@ -426,19 +426,21 @@ const LoadSearch: React.FC = () => {
     setCurrentTab(0);
   };
 
-  const handleConfirmStartLoad = async () => {
+  const handleConfirmStartLoad = async (options?: { withChassis?: boolean }) => {
     const id = loadToStartId || driverActiveLoads?.data?.id;
     const trimmedChassisNumber = startChassisNumber.trim();
     if (!id) return;
-    if (!trimmedChassisNumber) {
-      Alert.alert("Required", "Enter the chassis number to start this load.");
+    if (options?.withChassis && !trimmedChassisNumber) {
+      Alert.alert("Required", "Enter a chassis number to save");
       return;
     }
     setIsStartingLoad(true);
     try {
-      await customAxios.patch(`/driver/loads/${id}/start`, {
-        chassisNumber: trimmedChassisNumber,
-      });
+      const payload =
+        options?.withChassis && trimmedChassisNumber
+          ? { chassisNumber: trimmedChassisNumber }
+          : {};
+      await customAxios.patch(`/driver/loads/${id}/start`, payload);
       await Promise.all([refetchActive(), refetchAccepted()]);
       setStartLoadDialog(false);
       setStartChassisNumber("");
@@ -843,10 +845,8 @@ const LoadSearch: React.FC = () => {
   const handleSaveChassisFromDocuments = async () => {
     const loadId = driverActiveLoads?.data?.id;
     const trimmedChassisNumber = chassisNumber.trim();
-    if (!loadId || !trimmedChassisNumber) {
-      Alert.alert("Required", "Enter a chassis number");
-      return false;
-    }
+    if (!loadId) return false;
+    if (!trimmedChassisNumber) return true;
     try {
       await customAxios.patch(`/driver/loads/${loadId}/chassis`, {
         chassisNumber: trimmedChassisNumber,
@@ -1683,11 +1683,25 @@ const LoadSearch: React.FC = () => {
       {startLoadDialog && (
         <View style={styles.dialogOverlay}>
           <TypedCard containerStyle={styles.dialogCard}>
-            <Text style={styles.dialogTitle}>Start Load</Text>
-            <Text style={styles.dialogMessage}>
-              Enter the chassis number to start this load.
+            <View style={styles.startDialogHeader}>
+              <Text style={[styles.dialogTitle, styles.startDialogTitle]}>Start Load</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setStartLoadDialog(false);
+                  setStartChassisPickerVisible(false);
+                }}
+                disabled={isStartingLoad}
+                style={isStartingLoad && styles.closeButtonDisabled}
+              >
+                <Icon name="close" type="material" color={driverTheme.colors.grey[600]} size={22} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.dialogMessage, styles.startDialogMessage]}>
+              Chassis # is optional. Start without it, or save chassis then start.
             </Text>
-            <Text style={styles.documentFieldLabel}>Chassis #</Text>
+            <Text style={styles.documentFieldLabel}>
+              Chassis # <Text style={styles.optionalLabel}>(optional)</Text>
+            </Text>
             <Input
               placeholder="Select or type chassis #"
               value={startChassisNumber}
@@ -1721,18 +1735,14 @@ const LoadSearch: React.FC = () => {
             )}
             <View style={styles.dialogButtons}>
               <TouchableOpacity
-                onPress={handleConfirmStartLoad}
-                disabled={!startChassisNumber.trim() || isStartingLoad}
+                onPress={() => handleConfirmStartLoad()}
+                disabled={isStartingLoad}
                 activeOpacity={0.85}
                 style={[
                   styles.dialogButton,
                   {
-                    backgroundColor:
-                      startChassisNumber.trim() && !isStartingLoad
-                        ? driverTheme.colors.primary.main
-                        : driverTheme.colors.grey[300],
-                    opacity:
-                      !startChassisNumber.trim() || isStartingLoad ? 0.9 : 1,
+                    backgroundColor: driverTheme.colors.primary.main,
+                    opacity: isStartingLoad ? 0.7 : 1,
                     alignItems: "center",
                     justifyContent: "center",
                   },
@@ -1741,32 +1751,21 @@ const LoadSearch: React.FC = () => {
                 {isStartingLoad ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text
-                    style={[
-                      styles.buttonTitle,
-                      {
-                        color: startChassisNumber.trim()
-                          ? "#fff"
-                          : driverTheme.colors.grey[700],
-                      },
-                    ]}
-                  >
+                  <Text style={[styles.buttonTitle, { color: "#fff" }]}>
                     Start Load
                   </Text>
                 )}
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => {
-                  if (isStartingLoad) return;
-                  setStartLoadDialog(false);
-                  setStartChassisPickerVisible(false);
-                }}
+                onPress={() => handleConfirmStartLoad({ withChassis: true })}
                 disabled={isStartingLoad}
                 activeOpacity={0.85}
                 style={[
                   styles.dialogButton,
                   {
-                    backgroundColor: driverTheme.colors.grey[200],
+                    backgroundColor: "#fff",
+                    borderWidth: 1,
+                    borderColor: driverTheme.colors.primary.main,
                     alignItems: "center",
                     justifyContent: "center",
                     opacity: isStartingLoad ? 0.6 : 1,
@@ -1776,10 +1775,10 @@ const LoadSearch: React.FC = () => {
                 <Text
                   style={[
                     styles.buttonTitle,
-                    { color: driverTheme.colors.grey[700] },
+                    { color: driverTheme.colors.primary.main },
                   ]}
                 >
-                  Cancel
+                  Save Chassis & Start
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1904,7 +1903,9 @@ const LoadSearch: React.FC = () => {
               nestedScrollEnabled
             >
               <View style={styles.documentField}>
-                <Text style={styles.documentFieldLabel}>Chassis #</Text>
+                <Text style={styles.documentFieldLabel}>
+                  Chassis # <Text style={styles.optionalLabel}>(optional)</Text>
+                </Text>
                 <Input
                   placeholder="Select or type chassis #"
                   value={chassisNumber}
@@ -2615,6 +2616,24 @@ const styles = StyleSheet.create({
   },
   closeButtonDisabled: {
     opacity: 0.4,
+  },
+  startDialogHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: driverTheme.spacing.sm,
+  },
+  startDialogTitle: {
+    textAlign: "left",
+    marginBottom: 0,
+  },
+  startDialogMessage: {
+    fontSize: 14,
+    textAlign: "left",
+  },
+  optionalLabel: {
+    fontWeight: "500",
+    color: driverTheme.colors.text.secondary,
   },
   dialogTitle: {
     fontSize: 18,
