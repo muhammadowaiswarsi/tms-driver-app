@@ -225,6 +225,7 @@ const LoadSearch: React.FC = () => {
   const [mapsDestination, setMapsDestination] = useState<string | null>(null);
   const [podSignPromptDialog, setPodSignPromptDialog] = useState(false);
   const [podSignPurpose, setPodSignPurpose] = useState<"deliver" | "complete">("deliver");
+  const [podEsignSource, setPodEsignSource] = useState<"prompt" | "documents">("prompt");
   const [hasPodSignature, setHasPodSignature] = useState(false);
   const [loadToStartId, setLoadToStartId] = useState("");
   const [startChassisNumber, setStartChassisNumber] = useState("");
@@ -632,7 +633,8 @@ const LoadSearch: React.FC = () => {
     setDocumentDialog(true);
   };
 
-  const openPodEsign = () => {
+  const openPodEsign = (source: "prompt" | "documents" = "prompt") => {
+    setPodEsignSource(source);
     setEsignInitialSnapshot(
       hasPodSignature ? { ...podEsignData } : createDefaultPodEsignValues(),
     );
@@ -642,14 +644,19 @@ const LoadSearch: React.FC = () => {
 
   const handlePodEsignBack = () => {
     setPodEsignDialog(false);
-    setPodSignPromptDialog(true);
+    // Only return to the Sign POD prompt when that flow opened the e-sign page.
+    if (podEsignSource === "prompt") {
+      setPodSignPromptDialog(true);
+    }
   };
 
   const handlePodEsignApply = (values: PodEsignFormValues) => {
     setPodEsignData(values);
     setHasPodSignature(true);
     setPodEsignDialog(false);
-    setPodSignPromptDialog(true);
+    if (podEsignSource === "prompt") {
+      setPodSignPromptDialog(true);
+    }
   };
 
   const handleConfirmEventUpdate = async () => {
@@ -1835,7 +1842,7 @@ const LoadSearch: React.FC = () => {
               </View>
               <Button
                 title={hasPodSignature ? "Edit" : "Sign"}
-                onPress={openPodEsign}
+                onPress={() => openPodEsign("prompt")}
                 buttonStyle={styles.podSignActionButton}
                 titleStyle={styles.podSignActionButtonTitle}
                 icon={
@@ -1864,7 +1871,7 @@ const LoadSearch: React.FC = () => {
 
       
       {podEsignDialog && (
-        <View style={styles.dialogOverlay}>
+        <View style={[styles.dialogOverlay, styles.esignOverlay]}>
           <ESignScreen
             visible={podEsignDialog}
             initialValues={esignInitialSnapshot}
@@ -1995,62 +2002,86 @@ const LoadSearch: React.FC = () => {
                     </View>
                     {!doc.uploaded && (
                       <TouchableOpacity
-                        onPress={() => handleFileUpload(doc.id)}
-                        disabled={uploadingDocId === doc.id}
+                        onPress={() =>
+                          isProofOfDeliveryDoc(doc)
+                            ? openPodEsign("documents")
+                            : handleFileUpload(doc.id)
+                        }
+                        disabled={
+                          !isProofOfDeliveryDoc(doc) && uploadingDocId === doc.id
+                        }
                         activeOpacity={0.85}
                         style={[
                           styles.docActionButton,
                           {
                             backgroundColor: driverTheme.colors.primary.main,
-                            opacity: uploadingDocId === doc.id ? 0.7 : 1,
+                            opacity:
+                              !isProofOfDeliveryDoc(doc) && uploadingDocId === doc.id
+                                ? 0.7
+                                : 1,
                           },
                         ]}
                       >
-                        {uploadingDocId === doc.id ? (
+                        {!isProofOfDeliveryDoc(doc) && uploadingDocId === doc.id ? (
                           <ActivityIndicator size="small" color="#fff" />
                         ) : (
                           <>
                             <Icon
-                              name="cloud-upload"
+                              name={
+                                isProofOfDeliveryDoc(doc) ? "assignment" : "cloud-upload"
+                              }
                               type="material"
                               color="#fff"
                               size={18}
                             />
-                            <Text style={styles.docActionButtonText}>Upload</Text>
+                            <Text style={styles.docActionButtonText}>
+                              {isProofOfDeliveryDoc(doc) ? "Sign" : "Upload"}
+                            </Text>
                           </>
                         )}
                       </TouchableOpacity>
                     )}
-                    {doc.uploaded && (
+                    {doc.uploaded && (() => {
+                      const canEditPodSign =
+                        isProofOfDeliveryDoc(doc) && hasPodSignature;
+                      const actionEnabled = canEditPodSign || Boolean(viewUrl);
+                      return (
                       <TouchableOpacity
-                        onPress={() => handleViewDocument(doc)}
-                        disabled={!viewUrl}
+                        onPress={() =>
+                          canEditPodSign
+                            ? openPodEsign("documents")
+                            : handleViewDocument(doc)
+                        }
+                        disabled={!actionEnabled}
                         activeOpacity={0.85}
                         style={[
                           styles.docActionButton,
                           {
-                            backgroundColor: viewUrl
+                            backgroundColor: actionEnabled
                               ? driverTheme.colors.primary.main
                               : driverTheme.colors.grey[300],
                           },
                         ]}
                       >
                         <Icon
-                          name="visibility"
+                          name={canEditPodSign ? "assignment" : "visibility"}
                           type="material"
-                          color={viewUrl ? "#fff" : driverTheme.colors.grey[600]}
+                          color={
+                            actionEnabled ? "#fff" : driverTheme.colors.grey[600]
+                          }
                           size={18}
                         />
                         <Text
                           style={[
                             styles.docActionButtonText,
-                            !viewUrl && { color: driverTheme.colors.grey[600] },
+                            !actionEnabled && { color: driverTheme.colors.grey[600] },
                           ]}
                         >
-                          View
+                          {canEditPodSign ? "Edit Sign" : "View"}
                         </Text>
                       </TouchableOpacity>
-                    )}
+                      );
+                    })()}
                   </View>
                   );
                 })}
@@ -2069,44 +2100,56 @@ const LoadSearch: React.FC = () => {
                   </Text>
                 </View>
               )}
-
-              <View style={styles.documentDialogButtons}>
-                {documentDialogMode === "complete" ? (
-                  <Button
-                    title="Confirm"
-                    onPress={handleCompleteLoad}
-                    disabled={!allRequiredDocsUploaded}
-                    buttonStyle={[
-                      styles.documentConfirmButton,
-                      {
-                        backgroundColor: allRequiredDocsUploaded
-                          ? driverTheme.colors.success.main
-                          : driverTheme.colors.grey[300],
+            </ScrollView>
+            <View style={styles.documentDialogButtons}>
+              {documentDialogMode === "complete" ? (
+                <TouchableOpacity
+                  onPress={handleCompleteLoad}
+                  disabled={!allRequiredDocsUploaded}
+                  activeOpacity={0.85}
+                  style={[
+                    styles.docActionButton,
+                    styles.documentConfirmButton,
+                    {
+                      backgroundColor: allRequiredDocsUploaded
+                        ? driverTheme.colors.primary.main
+                        : driverTheme.colors.grey[300],
+                    },
+                  ]}
+                >
+                  <Icon
+                    name="assignment"
+                    type="material"
+                    color={
+                      allRequiredDocsUploaded ? "#fff" : driverTheme.colors.grey[600]
+                    }
+                    size={18}
+                  />
+                  <Text
+                    style={[
+                      styles.docActionButtonText,
+                      !allRequiredDocsUploaded && {
+                        color: driverTheme.colors.grey[600],
                       },
                     ]}
-                    titleStyle={styles.buttonTitle}
-                    icon={
-                      <Icon
-                        name="assignment"
-                        type="material"
-                        color="#fff"
-                        size={16}
-                      />
-                    }
-                  />
-                ) : (
-                  <Button
-                    title="Done"
-                    onPress={handleDocumentDialogDone}
-                    buttonStyle={[
-                      styles.documentConfirmButton,
-                      { backgroundColor: driverTheme.colors.primary.main },
-                    ]}
-                    titleStyle={styles.buttonTitle}
-                  />
-                )}
-              </View>
-            </ScrollView>
+                  >
+                    Confirm
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  onPress={handleDocumentDialogDone}
+                  activeOpacity={0.85}
+                  style={[
+                    styles.docActionButton,
+                    styles.documentConfirmButton,
+                    { backgroundColor: driverTheme.colors.primary.main },
+                  ]}
+                >
+                  <Text style={styles.docActionButtonText}>Done</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
       )}
@@ -2602,6 +2645,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 1000,
   },
+  esignOverlay: {
+    zIndex: 1100,
+  },
   dialogCard: {
     borderRadius: 16,
     width: "90%",
@@ -2868,10 +2914,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   documentDialogButtons: {
-    marginTop: driverTheme.spacing.sm,
+    paddingTop: driverTheme.spacing.sm,
   },
   documentConfirmButton: {
-    borderRadius: 8,
+    marginTop: 0,
+    width: "100%",
   },
   dialogIcon: {
     marginBottom: driverTheme.spacing.md,
