@@ -74,7 +74,7 @@
     ],
     "scheme": "driverapp",
     "extra": {
-      "apiUrl": "http://localhost:8080/api",
+      "apiUrl": "https://api.freightop.io/api",
       "router": {},
       "eas": {
         "projectId": "12e5d8c6-1bff-42ba-b748-c4bc4809f6bc"

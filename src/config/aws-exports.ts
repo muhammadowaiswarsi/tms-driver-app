@@ -1,14 +1,9 @@
-
-
-
-
-
 const awsExports = {
   Auth: {
     Cognito: {
-      userPoolId: "eu-north-1_Aa6eXl1gc",
-      userPoolClientId: "73kr3ljivik7uut2a72sofb00p",
-      region: "eu-north-1",
+      userPoolId: process.env.EXPO_PUBLIC_USER_POOL_ID || "us-east-1_XBMkDykK0",
+      userPoolClientId: process.env.EXPO_PUBLIC_CLIENT_ID || "1pd1i8tir48o3kfom6deivui7",
+      region: process.env.EXPO_PUBLIC_REGION || "us-east-1",
       loginWith: {
         email: true,
       },
