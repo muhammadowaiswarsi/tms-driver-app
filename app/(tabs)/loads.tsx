@@ -43,6 +43,7 @@ import {
   useUpdateDriverLoadReturnInfo,
 } from "../../src/hooks/useLoad";
 import { customAxios } from "../../src/services/api";
+import { startDriverTracking, stopDriverTracking } from "../../src/services/TrackingService";
 import { driverTheme } from "../../src/theme/driverTheme";
 import { Event } from "../../src/types/driver.types";
 import { formatPickupDateTime, getLoadDeliveryAddress, getLoadPickupAddress, getUpcomingDriverLoads, sortDriverLoadsByPickupDate } from "../../src/utils/driverLoadFilters";
@@ -291,6 +292,12 @@ const LoadSearch: React.FC = () => {
   const hasLoadInProgress = Boolean(inProgressLoadId);
 
   useEffect(() => {
+    if (!inProgressLoadId) return;
+    // Covers app reopen or a new login while this load is still in progress.
+    startDriverTracking().catch(() => {});
+  }, [inProgressLoadId]);
+
+  useEffect(() => {
     const activeId = inProgressLoadId ? String(inProgressLoadId) : null;
     if (!activeId) {
       setActiveProgressOpen(false);
@@ -447,6 +454,9 @@ const LoadSearch: React.FC = () => {
       setStartChassisNumber("");
       setStartChassisPickerVisible(false);
       setActiveProgressOpen(true);
+      // Location sharing should never block starting the load.
+      // Foreground pings and background updates both start with the session.
+      startDriverTracking().catch(() => {});
     } catch {
       Alert.alert("Error", "Error starting load");
     } finally {
@@ -473,7 +483,8 @@ const LoadSearch: React.FC = () => {
   const updateLoadStatus = useUpdateDriverLoadReturnInfo(
     driverActiveLoads?.data?.id || "",
     {
-      onSuccess: () => {
+      onSuccess: async () => {
+        await stopDriverTracking().catch(() => {});
         refetchActive();
         setCompleteDialog(false);
         setDocumentDialog(false);
